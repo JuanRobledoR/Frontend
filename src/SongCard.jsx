@@ -12,13 +12,15 @@ const SongCard = ({ song }) => {
         style={styles.backgroundImage} 
       />
       
-      {/* DEGRADADO PARA QUE SE LEA EL TEXTO */}
+      {/* SOMBRA PARA QUE SE LEA EL TEXTO */}
       <div style={styles.gradientOverlay}></div>
 
-      {/* INFO DEL TEXTO (Con pointer-events none para que el click pase a traves si es necesario) */}
+      {/* TEXTO INFORMATIVO */}
       <div style={styles.infoContainer}>
         <h1 style={styles.title}>{song.titulo}</h1>
-        <h2 style={styles.artist}>{song.artist}</h2>
+        <h2 style={styles.artist}>{song.artista}</h2>
+        {/* Indicador de si suena preview */}
+        {song.preview && <span style={styles.badge}>🔊 Preview</span>}
       </div>
     </div>
   );
@@ -26,44 +28,28 @@ const SongCard = ({ song }) => {
 
 const styles = {
   cardContainer: {
-    position: 'relative',
-    width: '100%',
-    height: '100%', // Ocupa todo el contenedor padre
-    borderRadius: '20px',
-    overflow: 'hidden', // Importante para que la imagen no se salga
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'flex-end', // Texto abajo
+    position: 'relative', width: '100%', height: '100%',
+    display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
   },
   backgroundImage: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: '100%',
-    height: '100%',
-    objectFit: 'cover', // Cubre todo el espacio tipo Story de Instagram
-    zIndex: 1, // Al fondo
+    position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
+    objectFit: 'cover', zIndex: 1,
   },
   gradientOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: '100%',
-    height: '100%',
-    background: 'linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0) 50%)',
-    zIndex: 2, // Encima de la imagen
+    position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
+    background: 'linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.4) 40%, rgba(0,0,0,0) 100%)',
+    zIndex: 2,
   },
   infoContainer: {
-    position: 'relative',
-    zIndex: 3, // Encima del gradiente
-    padding: '20px',
-    paddingBottom: '100px', // Espacio para que los botones no tapen el texto
-    textAlign: 'left',
-    color: 'white',
-    textShadow: '0 2px 4px rgba(0,0,0,0.5)'
+    position: 'relative', zIndex: 3, padding: '30px', paddingBottom: '140px', // Espacio para botones
+    textAlign: 'left', color: 'white', textShadow: '0 2px 4px rgba(0,0,0,0.8)'
   },
-  title: { margin: 0, fontSize: '2em', fontWeight: 'bold' },
-  artist: { margin: 0, fontSize: '1.2em', opacity: 0.9 },
+  title: { margin: 0, fontSize: '2.2rem', fontWeight: '800', lineHeight: '1.1' },
+  artist: { margin: '5px 0 0 0', fontSize: '1.2rem', opacity: 0.9, fontWeight: '400' },
+  badge: { 
+      marginTop: '10px', display: 'inline-block', backgroundColor: 'rgba(255,255,255,0.2)', 
+      padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem', backdropFilter: 'blur(5px)'
+  }
 };
 
 export default SongCard;

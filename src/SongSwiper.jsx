@@ -1,227 +1,174 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import SongCard from './SongCard';
 import axios from 'axios';
+import { useFeed } from './FeedContext'; 
 
-// --- AJUSTA ESTO A TU PUERTO LOCAL ---
 const API_URL = "http://localhost:8000"; 
-const PLAYLIST_ID_SEMILLA = "37i9dQZF1DXcBWIGoYBM5M"; 
+const USER_ID_TEST = 1; 
 
 const SongSwiper = () => {
-  const [currentBatch, setCurrentBatch] = useState([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [nextBatchBuffer, setNextBatchBuffer] = useState(null);
-  const [mergedPlaylist, setMergedPlaylist] = useState([]);
-  const [seenIds, setSeenIds] = useState([]);
-  const [isLoadingInitial, setIsLoadingInitial] = useState(true);
-  
-  // REFERENCIA AL AUDIO
-  const audioRef = useRef(new Audio()); 
+  const { 
+    feed, setFeed, 
+    currentIndex, setCurrentIndex, 
+    nextBatchBuffer, setNextBatchBuffer, 
+    seenIds, setSeenIds, 
+    fetchBatch, inicializarFeed, isLoading 
+  } = useFeed();
 
-  const fetchBatch = useCallback(async (existingIds) => {
-    try {
-      // Nota: Asegúrate que tu backend reciba 'playlist_id' y 'seen_ids' correctamente
-      const response = await axios.post(`${API_URL}/feed-playlist`, {
-        playlist_id: PLAYLIST_ID_SEMILLA,
-        limit: 20, 
-        seen_ids: existingIds
-      });
-      return response.data;
-    } catch (error) {
-      console.error("Error cargando:", error);
-      return [];
-    }
+  const [likedSongs, setLikedSongs] = useState([]); 
+  const audioRef = useRef(new Audio()); 
+  
+  // REF CLAVE: Guarda el ID de la canción actual para no repetir historial al cambiar de tab
+  const currentSongIdRef = useRef(null);
+
+  // 1. Carga inicial
+  useEffect(() => {
+    inicializarFeed();
+  }, [inicializarFeed]);
+
+  // 2. Cleanup del audio
+  useEffect(() => {
+    const player = audioRef.current;
+    return () => {
+      player.pause();
+    };
   }, []);
 
-  // 1. CARGA INICIAL
+  // 3. REPRODUCCIÓN Y REGISTRO INTELIGENTE
   useEffect(() => {
-    const init = async () => {
-      setIsLoadingInitial(true);
-      const batch1 = await fetchBatch([]);
-      setCurrentBatch(batch1);
-      const idsBatch1 = batch1.map(t => t.id);
-      setSeenIds(prev => [...prev, ...idsBatch1]);
-      setIsLoadingInitial(false);
+    if (feed.length === 0 || !feed[currentIndex]) return;
 
-      // Precargar siguiente
-      const batch2 = await fetchBatch(idsBatch1);
-      setNextBatchBuffer(batch2);
-    };
-    init();
-  }, [fetchBatch]);
-
-  // 2. CONTROL DE AUDIO (Centralizado)
-  useEffect(() => {
-    if (currentBatch.length === 0 || !currentBatch[currentIndex]) return;
-
-    const song = currentBatch[currentIndex];
+    const song = feed[currentIndex];
     const player = audioRef.current;
 
-    // Pausar anterior
-    player.pause();
-    player.currentTime = 0;
+    // ¿Es una canción nueva o es la misma porque regresé de otra pestaña?
+    const isNewSong = currentSongIdRef.current !== song.id;
 
-    if (song.preview) {
-      console.log("🔊 Intentando reproducir:", song.titulo);
-      player.src = song.preview;
-      player.volume = 0.6;
-      
-      const playPromise = player.play();
-      
-      if (playPromise !== undefined) {
-        playPromise.catch(error => {
-          console.warn("⚠️ Autoplay bloqueado. El usuario debe interactuar primero.", error);
-          // Esto es normal la primera vez. Al primer click del usuario, se desbloquea.
-        });
-      }
+    if (isNewSong) {
+        // SI ES NUEVA: Preparamos y reproducimos
+        player.pause();
+        player.currentTime = 0;
+        currentSongIdRef.current = song.id; // Actualizamos la ref
+
+        if (song.preview) {
+            player.src = song.preview;
+            player.volume = 0.5;
+            player.play()
+                .then(() => {
+                    // Solo registramos en historial si efectivamente empezó a sonar Y es nueva
+                    axios.post(`${API_URL}/interacciones/historial/play`, {
+                        id_usuario: USER_ID_TEST,
+                        cancion: {
+                            id_externo: String(song.id),
+                            plataforma: 'DEEZER',
+                            titulo: song.titulo,
+                            artista: song.artista,
+                            imagen_url: song.imagen,
+                            preview_url: song.preview
+                        }
+                    }).catch(e => console.log("Backend offline o error db:", e));
+                })
+                .catch(e => console.log("Autoplay bloqueado:", e));
+        }
+    } else {
+        // SI ES LA MISMA (Solo volvimos a la pestaña):
+        // No hacemos nada, o si quieres que reanude sola, descomenta abajo:
+        // if (player.paused && song.preview) player.play().catch(()=>{});
     }
-  }, [currentIndex, currentBatch]); // Se activa al cambiar de índice
+  }, [currentIndex, feed]); 
 
-  // 3. LÓGICA DE BOTONES (SWIPE)
+  // 4. Guardar Like/Dislike
+  const saveInteraction = async (song, tipo) => {
+    try {
+        const endpoint = tipo === 'like' ? 'like' : 'dislike';
+        await axios.post(`${API_URL}/interacciones/${endpoint}`, {
+            id_usuario: USER_ID_TEST,
+            cancion: {
+                id_externo: String(song.id),
+                plataforma: 'DEEZER',
+                titulo: song.titulo,
+                artista: song.artista,
+                imagen_url: song.imagen,
+                preview_url: song.preview
+            }
+        });
+    } catch (error) {
+        console.error("Error guardando interacción:", error);
+    }
+  };
+
+  // 5. Botones
   const handleDecision = useCallback((decision) => {
-    console.log("🖱️ Click detectado:", decision); // DEBUG: Si no ves esto en consola, algo tapa el botón
-    
-    if (currentBatch.length === 0) return;
-    const song = currentBatch[currentIndex];
+    if (feed.length === 0) return;
+    const song = feed[currentIndex];
 
     if (decision === 'like') {
-      setMergedPlaylist(prev => [...prev, song]);
+      // BLINDAJE: Solo agregamos a la lista visual si no está ya ahí por ID
+      setLikedSongs(prev => {
+          const yaExiste = prev.some(s => s.id === song.id);
+          if (yaExiste) return prev; // Si ya está, no hacemos nada
+          return [...prev, song];    // Si es nueva, la agregamos
+      });
+      saveInteraction(song, 'like');
+    } else {
+      saveInteraction(song, 'dislike');
     }
 
-    // Calcular siguiente índice
+    // Avanzar
     const nextIndex = currentIndex + 1;
-
-    // Si llegamos al final del lote actual
-    if (nextIndex >= currentBatch.length) {
-      console.log("🔄 Cambio de Lote...");
-      if (nextBatchBuffer && nextBatchBuffer.length > 0) {
-        const newIds = nextBatchBuffer.map(t => t.id);
-        setSeenIds(prev => [...prev, ...newIds]);
-        setCurrentBatch(nextBatchBuffer);
-        setCurrentIndex(0); // Reset a 0 para el nuevo lote
-        setNextBatchBuffer(null);
-        
-        // Pedir más en fondo
-        fetchBatch([...seenIds, ...newIds]).then(newBatch => setNextBatchBuffer(newBatch));
-      } else {
-        setIsLoadingInitial(true); // Spinner si no hay buffer
-        fetchBatch(seenIds).then(newBatch => {
-            setCurrentBatch(newBatch);
-            setCurrentIndex(0);
-            setIsLoadingInitial(false);
-        });
-      }
+    if (nextIndex >= feed.length) {
+        if (nextBatchBuffer && nextBatchBuffer.length > 0) {
+            const newIds = nextBatchBuffer.map(t => t.id);
+            setSeenIds(prev => [...prev, ...newIds]);
+            setFeed(prev => [...prev, ...nextBatchBuffer]); 
+            setNextBatchBuffer(null);
+            fetchBatch([...seenIds, ...newIds]).then(newBatch => setNextBatchBuffer(newBatch));
+            setCurrentIndex(nextIndex);
+        } else {
+            fetchBatch(seenIds).then(newBatch => {
+                setFeed(prev => [...prev, ...newBatch]);
+                setCurrentIndex(nextIndex);
+            });
+        }
     } else {
-      // Simplemente siguiente canción
       setCurrentIndex(nextIndex);
     }
-  }, [currentBatch, currentIndex, nextBatchBuffer, seenIds, fetchBatch]);
+  }, [feed, currentIndex, nextBatchBuffer, seenIds, fetchBatch]);
 
-  // TECLADO
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === 'ArrowLeft') handleDecision('dislike');
-      if (e.key === 'ArrowRight') handleDecision('like');
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleDecision]);
-
-  if (isLoadingInitial) return <div style={{color:'white', padding: 50}}>Cargando...</div>;
-  const currentSong = currentBatch[currentIndex];
+  if (isLoading && feed.length === 0) return <div style={styles.loading}>Cargando...</div>;
+  const currentSong = feed[currentIndex];
 
   return (
-    <div style={styles.pageContainer}> {/* Contenedor que evita el scroll */}
-      
-      {/* HEADER FLOTANTE */}
+    <div style={styles.pageContainer}>
       <div style={styles.header}>
-         <span>❤️ {mergedPlaylist.length} guardadas</span>
+         <span style={{marginRight: '15px'}}>❤️ {likedSongs.length}</span>
       </div>
 
-      {currentSong && (
+      {currentSong ? (
         <div style={styles.mainArea}>
-            {/* LA CARTA */}
             <SongCard song={currentSong} />
-            
-            {/* LOS BOTONES FLOTANTES ENCIMA DE TODO */}
             <div style={styles.floatingControls}>
-                <button 
-                    style={{...styles.btn, ...styles.btnReject}} 
-                    onClick={() => handleDecision('dislike')}
-                >
-                    ❌
-                </button>
-
+                <button style={{...styles.btn, ...styles.btnReject}} onClick={() => handleDecision('dislike')}>❌</button>
                 <div style={{width: 40}}></div>
-
-                <button 
-                    style={{...styles.btn, ...styles.btnLike}} 
-                    onClick={() => handleDecision('like')}
-                >
-                    💜
-                </button>
+                <button style={{...styles.btn, ...styles.btnLike}} onClick={() => handleDecision('like')}>💜</button>
             </div>
         </div>
+      ) : (
+          <div style={{color:'white'}}>No hay más canciones.</div>
       )}
     </div>
   );
 };
 
 const styles = {
-  pageContainer: {
-    width: '100vw',
-    height: '100vh',
-    backgroundColor: '#000',
-    overflow: 'hidden', // ESTO EVITA EL SCROLL
-    position: 'relative',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  header: {
-    position: 'absolute',
-    top: 20,
-    zIndex: 100, // Encima de todo
-    background: 'rgba(0,0,0,0.5)',
-    padding: '5px 15px',
-    borderRadius: '20px',
-    color: 'white',
-    fontWeight: 'bold',
-  },
-  mainArea: {
-    width: '100%',
-    height: '100%',
-    maxWidth: '450px', // Ancho máximo tipo móvil
-    maxHeight: '850px',
-    position: 'relative',
-    borderRadius: '0px', // En desktop se vería como móvil, en full screen 0
-    boxShadow: '0 0 50px rgba(0,0,0,0.5)',
-  },
-  floatingControls: {
-    position: 'absolute',
-    bottom: 30, // Pegado abajo
-    left: 0,
-    width: '100%',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 9999, // <--- AQUÍ ESTÁ EL ARREGLO DE TUS BOTONES
-  },
-  btn: {
-    width: '70px',
-    height: '70px',
-    borderRadius: '50%',
-    border: 'none',
-    fontSize: '28px',
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    boxShadow: '0 10px 20px rgba(0,0,0,0.5)',
-    transition: 'transform 0.1s',
-    outline: 'none',
-  },
-  btnReject: { backgroundColor: '#333', color: '#ff4444' },
-  btnLike: { backgroundColor: '#333', color: '#a044ff' },
+  pageContainer: { width: '100vw', height: '100vh', backgroundColor: '#000', overflow: 'hidden', position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'center' },
+  loading: { color: 'white', fontSize: '1.5rem' },
+  header: { position: 'absolute', top: 20, right: 20, zIndex: 100, background: 'rgba(0,0,0,0.6)', padding: '10px 20px', borderRadius: '30px', color: 'white', fontWeight: 'bold', display: 'flex', alignItems: 'center' },
+  mainArea: { width: '100%', height: '100%', maxWidth: '450px', maxHeight: '800px', position: 'relative', borderRadius: '20px', boxShadow: '0 0 50px rgba(0,0,0,0.5)', overflow: 'hidden' },
+  floatingControls: { position: 'absolute', bottom: 90, width: '100%', display: 'flex', justifyContent: 'center', zIndex: 99 }, 
+  btn: { width: '70px', height: '70px', borderRadius: '50%', border: 'none', fontSize: '30px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 5px 15px rgba(0,0,0,0.3)', transition: 'transform 0.1s' },
+  btnReject: { backgroundColor: '#ff4b4b', color: 'white' },
+  btnLike: { backgroundColor: '#a044ff', color: 'white' },
 };
 
 export default SongSwiper;

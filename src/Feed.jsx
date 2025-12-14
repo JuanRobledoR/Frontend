@@ -49,10 +49,12 @@ function Feed() {
   const [feed, setFeed] = useState([]);
   const [cargando, setCargando] = useState(false);
   
-  // Tu playlist semilla
-  const PLAYLIST_ID = "0M0kDGL860f0n8PZ2usv6B"; 
+  // playlist semilla
+  const PLAYLIST_ID = "0eDv7SF2SNwIHGpc2vJWzt"; 
   //0M0kDGL860f0n8PZ2usv6B
   //6GjULfC3dnq103KCta8plp
+  //0eDv7SF2SNwIHGpc2vJWzt
+  
 
   // Referencia al contenedor para detectar scroll
   const scrollContainerRef = useRef(null);

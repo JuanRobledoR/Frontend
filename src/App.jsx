@@ -1,21 +1,29 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import Buscador from './Buscador'; // Importa tu componente de buscador
-import Feed from './Feed';         // Importa el componente del feed
+import Navbar from './Navbar';
+import Buscador from './Buscador';
+import SongSwiper from './SongSwiper';
+import { LikesPage, PlaylistsPage, HistoryPage, ProfilePage } from './Pages';
+import { FeedProvider } from './FeedContext'; // <--- 1. IMPORTARLO
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        {/* Ruta para el Buscador */}
-        <Route path="/buscador" element={<Buscador />} />
-
-        {/* Ruta para el Feed */}
-        <Route path="/feed" element={<Feed />} />
-
-        {/* Opcional: Si entran a la raíz (localhost:5173), redirigir al buscador */}
-        <Route path="/" element={<Navigate to="/buscador" replace />} />
-      </Routes>
-    </BrowserRouter>
+    // 2. ENVOLVER TODO (Si te falta esta línea, el Feed se muere)
+    <FeedProvider> 
+      <BrowserRouter>
+        <div className="app-container" style={{paddingBottom: '80px', background: 'black', minHeight: '100vh'}}>
+            <Routes>
+              <Route path="/buscador" element={<Buscador />} />
+              <Route path="/feed" element={<SongSwiper />} />
+              <Route path="/likes" element={<LikesPage />} />
+              <Route path="/playlists" element={<PlaylistsPage />} />
+              <Route path="/historial" element={<HistoryPage />} />
+              <Route path="/perfil" element={<ProfilePage />} />
+              <Route path="/" element={<Navigate to="/feed" replace />} />
+            </Routes>
+        </div>
+        <Navbar />
+      </BrowserRouter>
+    </FeedProvider>
   );
 }
 
