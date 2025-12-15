@@ -1,68 +1,209 @@
+/* ========================================= */
+/* 1. VARIABLES Y RESET GLOBAL */
+/* ========================================= */
 :root {
+  --color-bg-primary: #f5f5f5;
+  --color-text-dark: #333;
+  --color-text-light: #555;
+  --color-accent-blue: #a3c4db; /* Color principal */
+  --color-card-bg: #ffffff;
+  --shadow-light: #ffffff;
+  --shadow-dark: #bebebe; /* Para efecto neumórfico */
+
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
+  color: var(--color-text-dark);
+  background-color: var(--color-bg-primary);
 }
 
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
   min-width: 320px;
   min-height: 100vh;
+  background-color: var(--color-bg-primary);
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+a { text-decoration: none; color: inherit; }
+ul { list-style: none; padding: 0; }
+
+/* ========================================= */
+/* 2. COMPONENTES NEUMÓRFICOS REUTILIZABLES */
+/* ========================================= */
+
+/* Tarjeta base con sombra suave */
+.neumorphic-card {
+  background: var(--color-bg-primary);
+  border-radius: 20px;
+  box-shadow: 8px 8px 16px var(--shadow-dark), 
+              -8px -8px 16px var(--shadow-light);
+  border: 1px solid rgba(255,255,255,0.2);
 }
 
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
+/* Botón Neumórfico */
+.btn-primary {
+  background: var(--color-bg-primary);
+  color: var(--color-accent-blue);
+  border: none;
+  padding: 10px 20px;
+  border-radius: 12px;
+  font-weight: bold;
   cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+  box-shadow: 5px 5px 10px var(--shadow-dark), 
+              -5px -5px 10px var(--shadow-light);
+  transition: all 0.2s ease;
 }
 
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+.btn-primary:active {
+  box-shadow: inset 5px 5px 10px var(--shadow-dark), 
+              inset -5px -5px 10px var(--shadow-light);
+}
+
+.btn-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg-primary);
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  box-shadow: 5px 5px 10px var(--shadow-dark), 
+              -5px -5px 10px var(--shadow-light);
+  transition: all 0.2s;
+  color: var(--color-text-light);
+}
+.btn-icon:active {
+  box-shadow: inset 3px 3px 6px var(--shadow-dark), 
+              inset -3px -3px 6px var(--shadow-light);
+}
+
+/* ========================================= */
+/* 3. INPUTS Y FORMULARIOS */
+/* ========================================= */
+.neumorphic-input {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 10px;
+  background: var(--color-bg-primary);
+  box-shadow: inset 4px 4px 8px var(--shadow-dark), 
+              inset -4px -4px 8px var(--shadow-light);
+  outline: none;
+  color: var(--color-text-dark);
+}
+
+/* ========================================= */
+/* 4. NAVBAR */
+/* ========================================= */
+.navbar-container {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90%;
+  max-width: 400px;
+  height: 60px;
+  background: var(--color-bg-primary);
+  border-radius: 30px;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  z-index: 1000;
+  box-shadow: 8px 8px 16px var(--shadow-dark), 
+              -8px -8px 16px var(--shadow-light);
+}
+
+.navbar-item {
+  color: var(--color-text-light);
+  padding: 10px;
+  border-radius: 50%;
+  transition: color 0.3s;
+}
+
+.navbar-item.active {
+  color: var(--color-accent-blue);
+  box-shadow: inset 3px 3px 6px var(--shadow-dark), 
+              inset -3px -3px 6px var(--shadow-light);
+}
+
+/* ========================================= */
+/* 5. FEED Y CARDS */
+/* ========================================= */
+.feed-container {
+  height: 100vh;
+  width: 100vw;
+  background-color: var(--color-bg-primary);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
+
+.music-card-screen {
+  position: relative;
+  width: 90%;
+  max-width: 400px;
+  height: 80vh;
+  border-radius: 30px;
+  overflow: hidden;
+  box-shadow: 15px 15px 30px var(--shadow-dark), 
+              -15px -15px 30px var(--shadow-light);
+  background: #fff;
+}
+
+.music-card-bg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.gradient-overlay {
+  position: absolute;
+  bottom: 0; left: 0; width: 100%; height: 50%;
+  background: linear-gradient(to top, rgba(245,245,245,1), transparent);
+}
+
+.info-container-bottom {
+  position: absolute;
+  bottom: 100px;
+  left: 20px;
+  text-align: left;
+  z-index: 10;
+}
+
+.action-buttons-container {
+  position: absolute;
+  bottom: 20px;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  gap: 30px;
+  z-index: 20;
+}
+
+.btn-circle-action {
+  width: 60px; height: 60px;
+  border-radius: 50%;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  box-shadow: 5px 5px 15px rgba(0,0,0,0.2);
+  display: flex; align-items: center; justifyContent: center;
+}
+.like-btn { background: #fff; color: #e91e63; }
+.dislike-btn { background: #fff; color: #333; }
+.play-btn-lg {
+  background: rgba(255,255,255,0.3);
+  backdrop-filter: blur(5px);
+  border: none;
+  border-radius: 50%;
+  width: 80px; height: 80px;
+  color: white;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.central-player-container {
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 5;
 }
