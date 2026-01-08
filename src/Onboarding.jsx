@@ -4,7 +4,7 @@ import { useAuth } from './AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { FiPlay, FiPause, FiPlus, FiMusic, FiSearch, FiX } from 'react-icons/fi';
 
-const API_URL = "https://backend-nx0h.onrender.com/";
+const API_URL = "https://backend-nx0h.onrender.com";
 
 /* Hook de ventana */
 function useWindowSize() {

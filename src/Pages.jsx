@@ -8,7 +8,7 @@ import {
 } from 'react-icons/fi';
 import './index.css';
 
-const API_URL = "https://backend-nx0h.onrender.com/";
+const API_URL = "https://backend-nx0h.onrender.com";
 
 // --- COMPONENTE REUTILIZABLE PARA FILAS DE CANCIONES (Audio + Estilo) ---
 const TrackRow = ({ track, subtitle, image, onAction1, icon1, onAction2, icon2, isPlayingProp }) => {

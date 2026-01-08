@@ -3,7 +3,7 @@ import axios from 'axios';
 import { useAuth } from './AuthContext';
 
 const FeedContext = createContext();
-const API_URL = "https://backend-nx0h.onrender.com/";
+const API_URL = "https://backend-nx0h.onrender.com";
 
 export const useFeed = () => useContext(FeedContext);
 

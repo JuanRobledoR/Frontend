@@ -4,7 +4,7 @@ import axios from 'axios';
 import { useFeed } from './FeedContext';
 import { useAuth } from './AuthContext';
 
-const API_URL = "https://backend-nx0h.onrender.com/";
+const API_URL = "https://backend-nx0h.onrender.com";
 
 const SongSwiper = () => {
     const { feed, currentIndex, setCurrentIndex, isLoading, refreshFeed } = useFeed();
