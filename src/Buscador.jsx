@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useAuth } from './AuthContext'; // Importa el hook
 import axios from 'axios';
 import './App.css'; 
 
@@ -6,7 +7,8 @@ const API_URL = "http://localhost:8000";
 const USER_ID = 1; // Usuario temporal
 
 function Buscador() {
-  const [busqueda, setBusqueda] = useState("")
+  const { userId } = useAuth(); // Obtén el ID real
+  const [busqueda, setBusqueda] = useState("");
   const [resultados, setResultados] = useState([])
   const [playlists, setPlaylists] = useState([])
   const [showModal, setShowModal] = useState(false)
@@ -14,7 +16,7 @@ function Buscador() {
 
   // Cargar playlists del usuario al iniciar (para el menú de agregar)
   useEffect(() => {
-    axios.get(`${API_URL}/interacciones/playlist/${USER_ID}`)
+    axios.get(`${API_URL}/interacciones/playlist/${userId}`)
       .then(res => setPlaylists(res.data))
       .catch(e => console.error(e));
   }, []);
@@ -38,7 +40,7 @@ function Buscador() {
   // --- NUEVA FUNCIÓN PARA DAR LIKE DIRECTO ---
   const handleQuickLike = (cancion) => {
     axios.post(`${API_URL}/interacciones/like`, {
-        id_usuario: USER_ID,
+        id_usuario: userId,
         cancion: {
             id_externo: String(cancion.id),
             plataforma: 'DEEZER',

@@ -1,113 +1,61 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-import Buscador from './Buscador'; // Asegúrate de importar esto
+import Buscador from './Buscador';
+import { useAuth } from './AuthContext';
+import { FiPlay, FiHeart, FiFolder, FiTrash2, FiPlus, FiMusic, FiChevronDown, FiChevronUp, FiX } from 'react-icons/fi';
 
 const API_URL = "http://localhost:8000";
-const USER_ID = 1;
 
-const containerStyle = {
-  padding: '20px',
-  paddingBottom: '100px', 
-  minHeight: '100vh',
-  backgroundColor: '#000',
-  color: 'white',
-  overflowY: 'auto'
-};
+const containerStyle = { padding: '20px', paddingBottom: '100px', minHeight: '100vh', backgroundColor: '#000', color: 'white', overflowY: 'auto' };
 
-// --- ME GUSTA ---
-// --- LIKES PAGE CON MODAL DE PLAYLIST ---
-// --- LIKES PAGE CON MODAL DE PLAYLIST ---
+// --- 1. LIKES (Con Folder para Playlist y Audio) ---
 export const LikesPage = () => {
   const [likes, setLikes] = useState([]);
-  
-  // Estados para el Modal
-  const [showModal, setShowModal] = useState(false);
   const [playlists, setPlaylists] = useState([]);
-  const [selectedTrackForPlaylist, setSelectedTrackForPlaylist] = useState(null);
+  const [showModal, setShowModal] = useState(false);
+  const [selectedTrack, setSelectedTrack] = useState(null);
+  const { userId } = useAuth();
 
   useEffect(() => {
-    cargarLikes();
-    // Cargamos playlists por si quiere agregar alguna canción
-    axios.get(`${API_URL}/interacciones/playlist/${USER_ID}`).then(res => setPlaylists(res.data));
-  }, []);
+    if (userId) {
+      axios.get(`${API_URL}/interacciones/mis-likes/${userId}`).then(res => setLikes(res.data));
+      axios.get(`${API_URL}/interacciones/playlist/${userId}`).then(res => setPlaylists(res.data));
+    }
+  }, [userId]);
 
-  const cargarLikes = () => {
-      axios.get(`${API_URL}/interacciones/mis-likes/${USER_ID}`)
-      .then(res => setLikes(res.data))
-      .catch(err => console.error(err));
-  }
-
-  const handleUnlike = (idCancionDb) => {
-    axios.delete(`${API_URL}/interacciones/like/${USER_ID}/${idCancionDb}`)
-      .then(() => setLikes(prev => prev.filter(t => t.id !== idCancionDb)))
-      .catch(err => console.error(err));
-  };
-
-  // Abrir Modal
-  const openPlaylistModal = (track) => {
-      setSelectedTrackForPlaylist(track);
-      setShowModal(true);
-  };
-
-  // Guardar en Playlist
-  const saveToPlaylist = (playlistId) => {
+  const saveToPlaylist = (pid) => {
     axios.post(`${API_URL}/interacciones/playlist/add`, {
-        id_playlist: playlistId,
+        id_playlist: pid,
         cancion: {
-            id_externo: String(selectedTrackForPlaylist.id), // Ojo: Asegúrate de que el endpoint de likes devuelva el ID externo o usar el interno
-            plataforma: 'DEEZER', 
-            titulo: selectedTrackForPlaylist.titulo,
-            artista: selectedTrackForPlaylist.artista,
-            imagen_url: selectedTrackForPlaylist.imagen,
-            preview_url: selectedTrackForPlaylist.preview
+            id_externo: String(selectedTrack.id), plataforma: 'DEEZER',
+            titulo: selectedTrack.titulo, artista: selectedTrack.artista,
+            imagen_url: selectedTrack.imagen, preview_url: selectedTrack.preview
         }
-    }).then(() => {
-        alert("¡Guardada en playlist!");
-        setShowModal(false);
-    });
+    }).then(() => { alert("¡Agregada!"); setShowModal(false); });
   };
 
   return (
     <div style={containerStyle}>
-      <h1 style={{marginBottom:'20px'}}>💜 Mis Me Gusta</h1>
-      
-      <div style={{display:'flex', flexDirection:'column', gap:'15px'}}>
-        {likes.map((track) => (
-          <div key={track.id} style={{display:'flex', gap:'10px', background:'#1a1a1a', padding:'10px', borderRadius:'12px', alignItems:'center', border:'1px solid #333'}}>
-            
-            <img src={track.imagen} style={{width:50, height:50, borderRadius:8, objectFit:'cover'}} />
-            
+      <h1 style={{textAlign:'left'}}>💜 Mis Me Gusta</h1>
+      <div style={{display:'flex', flexDirection:'column', gap:'15px', marginTop:'20px'}}>
+        {likes.map((t) => (
+          <div key={t.id} style={{display:'flex', gap:'10px', background:'#1a1a1a', padding:'12px', borderRadius:'12px', alignItems:'center'}}>
+            <img src={t.imagen} style={{width:50, height:50, borderRadius:8}} alt="cover" />
             <div style={{flex: 1, textAlign:'left'}}>
-              <div style={{fontWeight:'bold', fontSize:'0.9rem'}}>{track.titulo}</div>
-              <div style={{fontSize:'0.8rem', color:'#aaa'}}>{track.artista}</div>
+              <div style={{fontWeight:'bold'}}>{t.titulo}</div>
+              <div style={{fontSize:'0.8rem', color:'#aaa'}}>{t.artista}</div>
             </div>
-            
-            {track.preview && <audio controls src={track.preview} style={{height:30, width:80}} />}
-            
-            {/* BOTÓN AGREGAR A PLAYLIST (NUEVO) */}
-            <button onClick={() => openPlaylistModal(track)} style={{background:'transparent', border:'none', fontSize:'1.2rem', cursor:'pointer'}} title="Añadir a Playlist">
-                📂
-            </button>
-
-            {/* BOTÓN QUITAR LIKE */}
-            <button onClick={() => handleUnlike(track.id)} style={{background:'transparent', border:'none', fontSize:'1.2rem', cursor:'pointer'}} title="Quitar Like">
-                💔
-            </button>
+            {t.preview && <audio controls src={t.preview} style={{height:30, width:100}} />}
+            <button onClick={() => {setSelectedTrack(t); setShowModal(true)}} style={{background:'none', border:'none', color:'white'}}><FiFolder size={22}/></button>
           </div>
         ))}
       </div>
-
-      {/* MODAL (Igual que en Buscador) */}
       {showModal && (
         <div style={{position:'fixed', top:0, left:0, width:'100%', height:'100%', background:'rgba(0,0,0,0.8)', zIndex:2000, display:'flex', justifyContent:'center', alignItems:'center'}}>
-            <div style={{background:'#222', padding:'20px', borderRadius:'10px', width:'80%', maxWidth:'300px'}}>
+            <div style={{background:'#222', padding:'20px', borderRadius:'10px', width:'280px'}}>
                 <h3>Guardar en...</h3>
-                {playlists.map(p => (
-                    <button key={p.id} onClick={() => saveToPlaylist(p.id)} style={{display:'block', width:'100%', padding:'10px', margin:'5px 0', background:'#333', border:'none', color:'white', textAlign:'left'}}>
-                        💿 {p.nombre}
-                    </button>
-                ))}
-                <button onClick={() => setShowModal(false)} style={{marginTop:'15px', background:'red', width:'100%'}}>Cancelar</button>
+                {playlists.map(p => <button key={p.id} onClick={() => saveToPlaylist(p.id)} style={{display:'block', width:'100%', padding:'10px', margin:'5px 0', background:'#333', color:'white', border:'none'}}>💿 {p.nombre}</button>)}
+                <button onClick={() => setShowModal(false)} style={{width:'100%', background:'red', border:'none', color:'white', padding:'5px', marginTop:'10px'}}>Cerrar</button>
             </div>
         </div>
       )}
@@ -115,66 +63,41 @@ export const LikesPage = () => {
   );
 };
 
-// --- HISTORIAL ---
+// --- 2. HISTORIAL (Con Like y Audio) ---
 export const HistoryPage = () => {
     const [historial, setHistorial] = useState([]);
+    const { userId } = useAuth();
     
     useEffect(() => {
-        axios.get(`${API_URL}/interacciones/historial/${USER_ID}`)
-            .then(res => setHistorial(res.data))
-            .catch(err => console.error(err));
-    }, []);
+        if (userId) axios.get(`${API_URL}/interacciones/historial/${userId}`).then(res => setHistorial(res.data));
+    }, [userId]);
 
-    const darLikeDesdeHistorial = (item) => {
-        // Ahora sí enviamos el ID correcto
+    const darLike = (item) => {
         axios.post(`${API_URL}/interacciones/like`, {
-            id_usuario: USER_ID,
+            id_usuario: userId,
             cancion: {
-                id_externo: String(item.id_externo), // <--- USO DEL ID CORRECTO
-                plataforma: item.plataforma || 'DEEZER', 
-                titulo: item.titulo,
-                artista: item.artista,
-                imagen_url: item.imagen,
-                preview_url: item.preview
+                id_externo: String(item.id_externo), plataforma: item.plataforma || 'DEEZER',
+                titulo: item.titulo, artista: item.artista, imagen_url: item.imagen, preview_url: item.preview
             }
-        }).then(() => alert(`❤️ ${item.titulo} agregada a Me Gusta`))
-          .catch(e => console.error(e));
-    };
-
-    const getIcon = (tipo) => {
-        if (tipo === 'LIKE') return '💜';
-        if (tipo === 'DISLIKE') return '❌';
-        if (tipo === 'PLAY') return '🎧';
-        return '•';
+        }).then(() => alert("❤️ Agregada a Me Gusta"));
     };
 
     return (
         <div style={containerStyle}>
-            <h1>📜 Historial</h1>
+            <h1 style={{textAlign:'left'}}>📜 Historial</h1>
             <div style={{display:'flex', flexDirection:'column', gap:'10px', marginTop:'20px'}}>
                 {historial.map((item, idx) => (
-                    // Usamos idx como key, pero los datos vienen del item correcto
-                    <div key={`${item.id_interno}-${idx}`} style={{display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px', borderBottom:'1px solid #333', background: '#111'}}>
-                        
-                        <div style={{display:'flex', alignItems:'center', gap:'15px', flex: 1}}>
-                             <span style={{fontSize:'1.5rem', minWidth:'30px'}}>{getIcon(item.tipo)}</span>
-                             <img src={item.imagen} style={{width:40, height:40, borderRadius:5}} />
+                    <div key={idx} style={{display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px', background: '#111', borderRadius:'10px'}}>
+                        <div style={{display:'flex', alignItems:'center', gap:'15px'}}>
+                             <img src={item.imagen} style={{width:40, height:40, borderRadius:5}} alt="cover" />
                              <div style={{textAlign:'left'}}>
                                  <div style={{fontWeight:'bold', fontSize:'0.9rem'}}>{item.titulo}</div>
                                  <div style={{fontSize:'0.7rem', color:'#888'}}>{item.artista}</div>
                              </div>
                         </div>
-
-                        {/* CONTROLES: REPRODUCTOR + LIKE */}
-                        <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
-                            {/* Reproductor: Solo si hay preview */}
-                            {item.preview ? (
-                                <audio controls src={item.preview} style={{height:30, width:100}} />
-                            ) : <span style={{fontSize:'0.7em', color:'red'}}>Sin audio</span>}
-
-                            <button onClick={() => darLikeDesdeHistorial(item)} style={{background:'transparent', border:'none', fontSize:'1.2rem', cursor:'pointer'}} title="Guardar">
-                                ❤️
-                            </button>
+                        <div style={{display:'flex', gap:'10px', alignItems:'center'}}>
+                            {item.preview && <audio controls src={item.preview} style={{height:30, width:90}} />}
+                            <button onClick={() => darLike(item)} style={{background:'none', border:'none', color:'#ff4b2b'}}><FiHeart size={20}/></button>
                         </div>
                     </div>
                 ))}
@@ -183,183 +106,136 @@ export const HistoryPage = () => {
     );
 };
 
-// --- PLAYLISTS + BUSCADOR ---
+// --- 3. PLAYLISTS (LIBRARY COMPLETA RESTAURADA) ---
 export const PlaylistsPage = () => {
   const [tab, setTab] = useState('listas');
   const [playlists, setPlaylists] = useState([]);
   const [expandedId, setExpandedId] = useState(null); 
   const [tracks, setTracks] = useState([]); 
-  const [loadingIA, setLoadingIA] = useState(false); 
+  const [loadingIA, setLoadingIA] = useState(false);
+  const { userId } = useAuth();
 
-  const cargarPlaylists = () => {
-    axios.get(`${API_URL}/interacciones/playlist/${USER_ID}`).then(res => setPlaylists(res.data));
-  };
-  useEffect(cargarPlaylists, []);
+  const cargarPlaylists = useCallback(() => {
+    if(userId) axios.get(`${API_URL}/interacciones/playlist/${userId}`).then(res => setPlaylists(res.data));
+  }, [userId]);
 
-  // --- 1. CREAR PLAYLIST IA (BASADA EN LIKES) ---
-  const crearPlaylistIA = () => {
-      const nombre = prompt("Nombre para la Playlist Inteligente:");
-      if(!nombre) return;
-      setLoadingIA(true);
-      alert("🧬 Analizando tus gustos (Likes)...");
-      
-      axios.post(`${API_URL}/crear-playlist-inteligente-auto`, {
-          id_usuario: USER_ID,
-          nombre_playlist: nombre
-      }).then(res => {
-          setLoadingIA(false);
-          alert(`✅ ¡Creada con ${res.data.total} canciones!`);
-          cargarPlaylists();
-      }).catch(e => {
-          setLoadingIA(false);
-          alert("Error generando playlist IA");
-      });
-  };
+  useEffect(() => { cargarPlaylists(); }, [cargarPlaylists]);
 
-  // --- 2. IMPORTAR SPOTIFY ---
-  const importarSpotify = () => {
-      const link = prompt("Ingresa el ID de la Playlist de Spotify:\n(Ej: 37i9dQZF1DXcBWIGoYBM5M)");
-      if(!link) return;
-      
-      // Limpieza básica por si pegan la URL entera
-      const idLimpio = link.split('playlist/')[1]?.split('?')[0] || link;
-
-      alert("⏳ Importando... esto puede tomar unos segundos.");
-      axios.post(`${API_URL}/importar-playlist-spotify`, {
-          id_usuario: USER_ID,
-          spotify_playlist_id: idLimpio
-      }).then(res => {
-          alert(`✅ Importada: ${res.data.mensaje}`);
-          cargarPlaylists();
-      }).catch(e => alert("Error importando (Revisa que la playlist sea pública)"));
-  };
-
-  // --- 3. IMPORTAR DEEZER (Placeholder) ---
-  const importarDeezer = () => {
-      alert("🚧 Funcionalidad en mantenimiento. Usa Spotify por ahora.");
-  };
-
-  // --- 4. COMPLETAR PLAYLIST CON IA ---
-  const completarPlaylist = (idPlaylist) => {
-      const confirmar = confirm("🧬 ¿Quieres que la IA escuche esta playlist y agregue 5 canciones que combinen?");
-      if(!confirmar) return;
-
-      alert("🎧 La IA está analizando la vibra de la playlist...");
-      axios.post(`${API_URL}/completar-playlist-ia`, {
-          id_usuario: USER_ID,
-          id_playlist: idPlaylist
-      }).then(res => {
-          alert(`✅ ¡Listo! Se agregaron ${res.data.agregadas} canciones nuevas.`);
-          // Recargamos tracks
-          toggleExpand(idPlaylist); 
-          // Forzamos recarga visual cerrando y abriendo si ya estaba abierta
-          if(expandedId === idPlaylist) {
-             setExpandedId(null);
-             setTimeout(() => toggleExpand(idPlaylist), 100);
-          }
-      }).catch(e => {
-          console.error(e);
-          alert("Error: Tal vez la playlist está vacía y no tienes likes para usar de referencia.");
-      });
-  };
-
-  // --- MANEJO BÁSICO ---
   const toggleExpand = (id) => {
-    if (expandedId === id) {
-        setExpandedId(null); setTracks([]);
-    } else {
-        setExpandedId(id);
-        axios.get(`${API_URL}/interacciones/playlist/${id}/tracks`).then(res => setTracks(res.data));
+    if (expandedId === id) { setExpandedId(null); setTracks([]); }
+    else { 
+      setExpandedId(id); 
+      axios.get(`${API_URL}/interacciones/playlist/${id}/tracks`).then(res => setTracks(res.data)); 
     }
   };
-  const crearPlaylistManual = () => {
-    const nombre = prompt("Nombre:");
-    if (nombre) axios.post(`${API_URL}/interacciones/playlist`, { id_usuario: USER_ID, nombre }).then(cargarPlaylists);
+
+  const crearPlaylistIA = () => {
+    const nombre = prompt("Nombre para la Playlist Inteligente:");
+    if(!nombre) return;
+    setLoadingIA(true);
+    axios.post(`${API_URL}/crear-playlist-inteligente-auto`, { id_usuario: userId, nombre_playlist: nombre })
+         .then(() => { alert("✅ Playlist IA Creada"); cargarPlaylists(); })
+         .finally(() => setLoadingIA(false));
   };
-  const borrarPlaylist = (e, id) => { e.stopPropagation(); if(confirm("¿Borrar?")) axios.delete(`${API_URL}/interacciones/playlist/${id}`).then(cargarPlaylists); };
-  const eliminarTrack = (pid, tid) => { axios.delete(`${API_URL}/interacciones/playlist/${pid}/track/${tid}`).then(() => toggleExpand(pid)); };
+
+  const importarSpotify = () => {
+    const id = prompt("Ingresa el ID de la playlist de Spotify:");
+    if(id) {
+        axios.post(`${API_URL}/importar-playlist-spotify`, { id_usuario: userId, spotify_playlist_id: id })
+             .then(() => { alert("✅ Importada"); cargarPlaylists(); });
+    }
+  };
+
+  const completarIA = (id) => {
+    setLoadingIA(true);
+    axios.post(`${API_URL}/completar-playlist-ia`, { id_usuario: userId, id_playlist: id })
+         .then(res => { alert(`✨ Se añadieron ${res.data.agregadas} canciones`); toggleExpand(id); })
+         .finally(() => setLoadingIA(false));
+  };
+
+  const borrarPlaylist = (e, id) => {
+    e.stopPropagation();
+    if(confirm("¿Borrar playlist completa?")) axios.delete(`${API_URL}/interacciones/playlist/${id}`).then(cargarPlaylists);
+  };
+
+  const eliminarTrack = (pid, tid) => {
+    axios.delete(`${API_URL}/interacciones/playlist/${pid}/track/${tid}`).then(() => {
+        axios.get(`${API_URL}/interacciones/playlist/${pid}/tracks`).then(res => setTracks(res.data));
+    });
+  };
 
   return (
     <div style={containerStyle}>
       <div style={{display:'flex', gap:'10px', marginBottom:'20px'}}>
-        <button onClick={() => setTab('listas')} style={{flex:1, padding:'10px', background: tab==='listas'?'#1DB954':'#333', border:'none', borderRadius:'20px', color:'white', fontWeight:'bold'}}>Mis Playlists</button>
-        <button onClick={() => setTab('buscar')} style={{flex:1, padding:'10px', background: tab==='buscar'?'#1DB954':'#333', border:'none', borderRadius:'20px', color:'white', fontWeight:'bold'}}>🔍 Buscar</button>
+        <button onClick={() => setTab('listas')} style={{flex:1, padding:'12px', background: tab==='listas'?'#1DB954':'#333', border:'none', borderRadius:'20px', color:'white', fontWeight:'bold'}}>Mis Playlists</button>
+        <button onClick={() => setTab('buscar')} style={{flex:1, padding:'12px', background: tab==='buscar'?'#1DB954':'#333', border:'none', borderRadius:'20px', color:'white', fontWeight:'bold'}}>🔍 Buscar</button>
       </div>
 
       {tab === 'listas' ? (
         <>
-            {/* CABECERA Y BOTONES GLOBALES */}
-            <div style={{display:'flex', flexDirection:'column', gap:'10px', marginBottom: 20}}>
-                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-                    <h1>Biblioteca</h1>
-                    <button onClick={crearPlaylistManual} style={{background:'#333', padding:'5px 15px', borderRadius:20, color:'white'}}>+ Manual</button>
-                </div>
-                
-                {/* BARRA DE HERRAMIENTAS IA & IMPORT */}
-                <div style={{display:'flex', gap:'10px', flexWrap:'wrap'}}>
-                    <button onClick={crearPlaylistIA} disabled={loadingIA} style={{flex:1, background: loadingIA ? '#555' : 'purple', padding:'8px', borderRadius:10, color:'white', border:'1px solid #d0f', fontWeight:'bold'}}>
-                        {loadingIA ? '⏳ Creando...' : '🧬 Crear con IA'}
-                    </button>
-                    
-                    <button onClick={importarSpotify} style={{flex:1, background:'#1DB954', padding:'8px', borderRadius:10, color:'black', border:'none', fontWeight:'bold'}}>
-                        ⬇ Spotify
-                    </button>
-                    
-                    <button onClick={importarDeezer} style={{flex:1, background:'#333', padding:'8px', borderRadius:10, color:'#777', border:'1px dashed #555', cursor:'not-allowed'}}>
-                        ⬇ Deezer
-                    </button>
-                </div>
+            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'15px'}}>
+                <h1 style={{margin:0}}>Biblioteca</h1>
+                <button onClick={() => {const n = prompt("Nombre:"); if(n) axios.post(`${API_URL}/interacciones/playlist`, {id_usuario:userId, nombre:n}).then(cargarPlaylists)}} style={{background:'#333', border:'none', color:'white', padding:'5px 15px', borderRadius:'20px'}}>+ Manual</button>
+            </div>
+
+            <div style={{display:'flex', gap:'10px', marginBottom:'20px'}}>
+                <button onClick={crearPlaylistIA} style={{flex:1, padding:'10px', background:'#8e24aa', color:'white', border:'none', borderRadius:'10px', fontWeight:'bold'}}>🧬 Crear con IA</button>
+                <button onClick={importarSpotify} style={{flex:1, padding:'10px', background:'#1DB954', color:'white', border:'none', borderRadius:'10px', fontWeight:'bold'}}>Spotify</button>
+                <button disabled style={{flex:1, padding:'10px', background:'#444', color:'#777', border:'none', borderRadius:'10px'}}>Deezer</button>
             </div>
             
-            <div style={{display:'flex', flexDirection:'column', gap:'15px'}}>
-                {playlists.map(p => (
-                    <div key={p.id} style={{background:'#222', borderRadius:10, overflow:'hidden'}}>
-                        <div onClick={() => toggleExpand(p.id)} style={{padding:'15px', display:'flex', justifyContent:'space-between', alignItems:'center', cursor:'pointer', background:'#333'}}>
-                            <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
-                                <span style={{fontSize:'1.5rem'}}>🎵</span>
-                                <span style={{fontWeight:'bold'}}>{p.nombre}</span>
-                            </div>
-                            <div style={{display:'flex', gap:'10px'}}>
-                                <span>{expandedId === p.id ? '▲' : '▼'}</span>
-                                <button onClick={(e) => borrarPlaylist(e, p.id)} style={{background:'transparent', border:'none'}}>🗑️</button>
-                            </div>
+            {playlists.map(p => (
+                <div key={p.id} style={{background:'#1a1a1a', borderRadius:12, marginBottom:'12px', overflow:'hidden', border: '1px solid #333'}}>
+                    <div onClick={() => toggleExpand(p.id)} style={{padding:'18px', display:'flex', justifyContent:'space-between', alignItems:'center', cursor:'pointer', background:'#282828'}}>
+                        <div style={{display:'flex', alignItems:'center', gap:'12px'}}>
+                            <FiMusic size={20} color="#1DB954"/> <strong>{p.nombre}</strong>
                         </div>
-                        
-                        {/* ZONA EXPANDIDA */}
-                        {expandedId === p.id && (
-                            <div style={{padding:'10px', background:'#1a1a1a'}}>
-                                
-                                {/* BOTÓN COMPLETAR CON IA (ACTIVO) */}
-                                <button onClick={() => completarPlaylist(p.id)} style={{width:'100%', marginBottom:'10px', background:'linear-gradient(90deg, #6a11cb 0%, #2575fc 100%)', color:'white', border:'none', padding:'10px', borderRadius:'5px', fontWeight:'bold', cursor:'pointer'}}>
-                                    ✨ Completar Playlist con IA
-                                </button>
-                                
-                                {tracks.length === 0 && <p style={{textAlign:'center', color:'#666'}}>Vacía</p>}
-                                {tracks.map(t => (
-                                    <div key={t.id} style={{display:'flex', alignItems:'center', gap:'10px', padding:'10px', borderBottom:'1px solid #333'}}>
-                                        {/* Imagen con fallback si viene vacía de Spotify */}
-                                        <img src={t.imagen || 'https://via.placeholder.com/40'} style={{width:40, height:40, borderRadius:4}} />
-                                        <div style={{flex:1}}>
-                                            <div style={{fontWeight:'bold'}}>{t.titulo}</div>
-                                            <div style={{fontSize:'0.7rem'}}>{t.artista}</div>
-                                        </div>
-                                        {t.preview && <audio controls src={t.preview} style={{height:25, width:70}} />}
-                                        <button onClick={() => eliminarTrack(p.id, t.id)} style={{background:'transparent', border:'none', color:'red'}}>✖</button>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
+                        <div style={{display:'flex', alignItems:'center', gap:'15px'}}>
+                            {expandedId === p.id ? <FiChevronUp /> : <FiChevronDown />}
+                            <button onClick={(e) => borrarPlaylist(e, p.id)} style={{background:'none', border:'none', color:'#ff4b2b'}}><FiTrash2 size={18}/></button>
+                        </div>
                     </div>
-                ))}
-            </div>
+                    {expandedId === p.id && (
+                        <div style={{padding:'10px', background:'#121212'}}>
+                            <button onClick={() => completarIA(p.id)} disabled={loadingIA} style={{width:'100%', padding:'12px', background:'linear-gradient(90deg, #6a11cb 0%, #2575fc 100%)', border:'none', color:'white', borderRadius:'8px', marginBottom:'15px', fontWeight:'bold'}}>
+                                {loadingIA ? '⏳ Analizando vibra...' : '✨ Completar Playlist con IA'}
+                            </button>
+                            {tracks.length === 0 && <p style={{textAlign:'center', color:'#555'}}>Vacía</p>}
+                            {tracks.map(t => (
+                                <div key={t.id} style={{display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px', background:'#1a1a1a', marginBottom:'5px', borderRadius:'8px'}}>
+                                    <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
+                                        <img src={t.imagen || 'https://via.placeholder.com/40'} style={{width:35, height:35, borderRadius:4}} alt="song" />
+                                        <div style={{textAlign:'left'}}>
+                                            <div style={{fontSize:'0.9rem', fontWeight:'bold'}}>{t.titulo}</div>
+                                            <div style={{fontSize:'0.7rem', color:'#888'}}>{t.artista}</div>
+                                        </div>
+                                    </div>
+                                    <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
+                                        {t.preview && <FiPlay size={16} onClick={(e) => {e.stopPropagation(); new Audio(t.preview).play()}} style={{cursor:'pointer'}}/>}
+                                        <button onClick={() => eliminarTrack(p.id, t.id)} style={{color:'#ff4b2b', background:'none', border:'none'}}><FiX /></button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            ))}
         </>
-      ) : (
-        <Buscador />
-      )}
+      ) : <Buscador />}
     </div>
   );
 };
 
-export const ProfilePage = () => (
-    <div style={containerStyle}><h1>👤 Perfil</h1><p>Usuario: Tester</p></div>
-);
+// --- 4. PERFIL (Con Export) ---
+export const ProfilePage = () => {
+    const { user, logout } = useAuth();
+    return (
+        <div style={containerStyle}>
+            <div className="neumorphic-card" style={{padding:'40px', textAlign:'center', marginTop:'50px', background:'#1a1a1a'}}>
+                <h1 style={{color:'white'}}>👤 Mi Perfil</h1>
+                <p style={{color:'#aaa'}}>Usuario: {user?.username || 'Tester'}</p>
+                <button onClick={logout} className="btn-primary" style={{marginTop:'30px', background:'#ff4b2b', color:'white', width:'100%'}}>Cerrar Sesión 🚪</button>
+            </div>
+        </div>
+    );
+};

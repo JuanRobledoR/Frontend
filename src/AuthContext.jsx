@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
 
 const AuthContext = createContext();
@@ -7,52 +7,45 @@ const API_URL = "http://localhost:8000";
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
-    // Leemos del localStorage al inicio para mantener sesión
     const [user, setUser] = useState(() => {
         const saved = localStorage.getItem('beatmatch_user');
         return saved ? JSON.parse(saved) : null;
     });
-    
-    // Estado derivado
+
     const isAuthenticated = !!user;
-    const userId = user?.id_usuario; // Asegúrate que tu backend devuelve 'id_usuario'
+    const userId = user?.id_usuario;
 
     useEffect(() => {
-        if (user) {
-            localStorage.setItem('beatmatch_user', JSON.stringify(user));
-        } else {
-            localStorage.removeItem('beatmatch_user');
-        }
+        if (user) localStorage.setItem('beatmatch_user', JSON.stringify(user));
+        else localStorage.removeItem('beatmatch_user');
     }, [user]);
 
-    // LOGIN: Adapta la URL a tu backend real
-    const login = useCallback(async (username, password) => {
+    // Lógica real de Login
+    const login = async (username, password) => {
         try {
-            // EJEMPLO: Ajusta '/usuarios/login' a tu ruta real
-            // Como tu backend actual no tiene login, esto fallará hasta que lo crees.
-            // Por ahora simularemos un login exitoso con ID 1 para que puedas probar el diseño.
-            
-            // --- SIMULACIÓN (BORRAR CUANDO TENGAS BACKEND DE LOGIN) ---
-             const fakeUser = { id_usuario: 1, username: username };
-             setUser(fakeUser);
-             return true;
-            // ----------------------------------------------------------
-
-            /* CODIGO REAL (DESCOMENTAR CUANDO TENGAS BACKEND)
             const res = await axios.post(`${API_URL}/auth/login`, { username, password });
-            setUser(res.data); // data debe traer { id_usuario, username, token }
-            return true;
-            */
+            setUser(res.data); // Guarda id_usuario y username
+            return { success: true };
         } catch (error) {
-            console.error("Login error", error);
-            return false;
+            return { success: false, msg: error.response?.data?.detail || "Credenciales incorrectas" };
         }
-    }, []);
+    };
 
-    const logout = useCallback(() => setUser(null), []);
+    // Lógica real de Registro
+    const register = async (username, email, password) => {
+        try {
+            const res = await axios.post(`${API_URL}/auth/register`, { username, email, password });
+            setUser(res.data);
+            return { success: true };
+        } catch (error) {
+            return { success: false, msg: error.response?.data?.detail || "Error al registrar" };
+        }
+    };
+
+    const logout = () => setUser(null);
 
     return (
-        <AuthContext.Provider value={{ user, userId, isAuthenticated, login, logout }}>
+        <AuthContext.Provider value={{ user, userId, isAuthenticated, login, register, logout }}>
             {children}
         </AuthContext.Provider>
     );

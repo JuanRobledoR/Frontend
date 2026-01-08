@@ -1,56 +1,58 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+
+// Componentes Base
 import Navbar from './Navbar';
 import SongSwiper from './SongSwiper';
 import Buscador from './Buscador';
+import Onboarding from './Onboarding';
 import { AuthProvider, useAuth } from './AuthContext';
-import { FeedProvider } from './FeedContext';
-import { LikesPage, ProfilePage, HistoryPage, PlaylistsPage } from './Pages';
+import { FeedProvider, useFeed } from './FeedContext';
 
-// Componente para proteger rutas (Si no estás logueado, te manda a login)
-const ProtectedRoute = ({ children }) => {
-    const { isAuthenticated, login } = useAuth();
-    
-    // COMO NO TIENES PÁGINA DE LOGIN AÚN:
-    // Si no está autenticado, forzamos login automático (Simulación)
-    if (!isAuthenticated) {
-        return (
-            <div style={{height:'100vh', display:'flex', flexDirection:'column', justifyContent:'center', alignItems:'center'}}>
-                <h2>Bienvenido a BeatMatch</h2>
-                <button className="btn-primary" onClick={() => login("testUser", "123")}>
-                    Entrar como Test User
-                </button>
-            </div>
-        );
-    }
-    return children;
-};
+// Páginas (Asegúrate de que Pages.jsx tenga todos los exports abajo)
+import { LikesPage, ProfilePage, HistoryPage, PlaylistsPage } from './Pages';
+import { LoginPage, RegisterPage } from './AuthPages';
+import { AdminDashboard } from './AdminDashboard'; 
 
 function AppContent() {
     const { isAuthenticated } = useAuth();
+    const { onboardingComplete, isLoading } = useFeed();
+
+    if (!isAuthenticated) {
+        return (
+            <Routes>
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/register" element={<RegisterPage />} />
+                <Route path="*" element={<Navigate to="/login" replace />} />
+            </Routes>
+        );
+    }
+
+    if (isLoading) return <div style={{textAlign:'center', marginTop:'50px', color: '#222'}}>🧬 Sincronizando BeatMatch...</div>;
+
     return (
         <div className="app-layout">
              <Routes>
-                <Route path="/feed" element={
-                    <ProtectedRoute>
-                        <SongSwiper />
-                    </ProtectedRoute>
-                } />
-                <Route path="/buscador" element={<ProtectedRoute><Buscador /></ProtectedRoute>} />
-                
-                {/* --- RUTAS RECUPERADAS --- */}
-                <Route path="/historial" element={<ProtectedRoute><HistoryPage /></ProtectedRoute>} />
-                <Route path="/playlists" element={<ProtectedRoute><PlaylistsPage /></ProtectedRoute>} />
-                {/* ------------------------- */}
-
-                <Route path="/likes" element={<ProtectedRoute><LikesPage /></ProtectedRoute>} />
-                <Route path="/perfil" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
-                
-                <Route path="*" element={<Navigate to="/feed" replace />} />
+                <Route path="/" element={!onboardingComplete ? <Navigate to="/onboarding" /> : <Navigate to="/feed" />} />
+                {!onboardingComplete ? (
+                    <>
+                        <Route path="/onboarding" element={<Onboarding />} />
+                        <Route path="*" element={<Navigate to="/onboarding" replace />} />
+                    </>
+                ) : (
+                    <>
+                        <Route path="/feed" element={<SongSwiper />} />
+                        <Route path="/buscador" element={<Buscador />} />
+                        <Route path="/historial" element={<HistoryPage />} />
+                        <Route path="/playlists" element={<PlaylistsPage />} />
+                        <Route path="/likes" element={<LikesPage />} />
+                        <Route path="/perfil" element={<ProfilePage />} />
+                        <Route path="/admin" element={<AdminDashboard />} />
+                        <Route path="*" element={<Navigate to="/feed" replace />} />
+                    </>
+                )}
              </Routes>
-             
-             {/* Mostrar Navbar solo si está logueado */}
-             {isAuthenticated && <Navbar />}
+             {onboardingComplete && <Navbar />}
         </div>
     );
 }

@@ -10,11 +10,19 @@ const SongCard = ({ song, onLike, onDislike }) => {
   if (!song) return null;
 
   const togglePlay = () => {
-    if (audioRef.current) {
-      if (jugando) audioRef.current.pause();
-      else audioRef.current.play().catch(e => console.error(e));
-      setJugando(!jugando);
-    }
+      if (audioRef.current) {
+          if (jugando) {
+              audioRef.current.pause();
+              setJugando(false);
+          } else {
+              audioRef.current.play().catch(e => {
+                  console.error("Error de reproducción:", e);
+                  alert("El enlace de esta canción ha expirado. Dale a 'Reintentar evolución' para refrescar el pool.");
+                  setJugando(false);
+              });
+              setJugando(true);
+          }
+      }
   };
 
   return (

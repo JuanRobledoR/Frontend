@@ -7,23 +7,20 @@ import { useAuth } from './AuthContext';
 const API_URL = "http://localhost:8000";
 
 const SongSwiper = () => {
-    const { feed, currentIndex, setCurrentIndex, isLoading } = useFeed();
+    const { feed, currentIndex, setCurrentIndex, isLoading, refreshFeed } = useFeed();
     const { userId } = useAuth();
 
     const handleDecision = async (type) => {
         const song = feed[currentIndex];
-        if (!song) return;
+        if (!song || !userId) return;
 
-        // Avanzar UI inmediatamente
-        if (currentIndex < feed.length - 1) setCurrentIndex(prev => prev + 1);
-
-        // Llamada Backend (Sin esperar para fluidez)
         const endpoint = type === 'like' ? 'like' : 'dislike';
         try {
             await axios.post(`${API_URL}/interacciones/${endpoint}`, {
-                id_usuario: userId || 1, // Fallback a 1 si no hay login real
+                id_usuario: userId,
                 cancion: {
-                    id_externo: String(song.id),
+                    // Mantenemos consistencia con lo que espera el backend
+                    id_externo: String(song.id_externo || song.id), 
                     plataforma: 'DEEZER',
                     titulo: song.titulo,
                     artista: song.artista,
@@ -34,9 +31,22 @@ const SongSwiper = () => {
         } catch (e) {
             console.error("Error guardando interacción", e);
         }
+
+        // Avanzar al siguiente
+        if (currentIndex === feed.length - 1) {
+            refreshFeed();
+        } else {
+            setCurrentIndex(prev => prev + 1);
+        }
     };
 
-    if (isLoading && feed.length === 0) return <div style={{marginTop:100}}>Cargando música...</div>;
+    if (isLoading && feed.length === 0) {
+        return (
+            <div className="feed-container" style={{justifyContent:'center', color:'white'}}>
+                <p>🧬 Evolucionando tu playlist...</p>
+            </div>
+        );
+    }
 
     const currentSong = feed[currentIndex];
 
@@ -44,14 +54,23 @@ const SongSwiper = () => {
         <div className="feed-container">
             {currentSong ? (
                 <SongCard 
+                    // EL FIX: Al cambiar el ID, SongCard se reinicia completamente
+                    // Esto arregla el problema de los audios que no cargan
+                    key={currentSong.id_externo || currentSong.id} 
                     song={currentSong} 
                     onLike={() => handleDecision('like')}
                     onDislike={() => handleDecision('dislike')}
                 />
             ) : (
-                <div style={{padding:20}}>No hay más canciones disponibles.</div>
+                <div style={{padding:20, color:'white', textAlign:'center'}}>
+                    <h3>No hay más canciones en el pool.</h3>
+                    <button className="btn-primary" onClick={refreshFeed} style={{marginTop:'20px'}}>
+                        🔄 Reintentar evolución
+                    </button>
+                </div>
             )}
         </div>
     );
 };
+
 export default SongSwiper;
