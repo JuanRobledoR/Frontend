@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import axios from 'axios';
 
 const AuthContext = createContext();
-const API_URL = "http://localhost:8000"; 
+const API_URL = "https://backend-nx0h.onrender.com/"; 
 
 export const useAuth = () => useContext(AuthContext);
 

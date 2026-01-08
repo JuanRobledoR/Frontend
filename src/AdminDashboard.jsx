@@ -4,7 +4,7 @@ import axios from 'axios';
 // Renderiza panel de métricas
 export const AdminDashboard = () => {
     const [stats, setStats] = useState(null);
-    const API_URL = "http://localhost:8000";
+    const API_URL = "https://backend-nx0h.onrender.com/";
 
     // Petición de estadística al montar
     useEffect(() => {

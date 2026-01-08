@@ -4,7 +4,7 @@ import axios from 'axios';
 import { FiSearch, FiPlay, FiPause, FiPlus, FiHeart, FiX, FiDisc, FiMusic } from 'react-icons/fi';
 import './index.css'; 
 
-const API_URL = "http://localhost:8000";
+const API_URL = "https://backend-nx0h.onrender.com/";
 
 // Tarjeta resultado
 const SearchResultCard = ({ track, onLike, onAdd }) => {

@@ -59,7 +59,7 @@ function Feed() {
     try {
         const seenIds = feed.map(t => t.id);
 
-        const response = await fetch('http://localhost:8000/feed-playlist', {
+        const response = await fetch('https://backend-nx0h.onrender.com/', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
