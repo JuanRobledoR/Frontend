@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import SongCard from './SongCard';
 import axios from 'axios';
 import { useFeed } from './FeedContext';
@@ -10,6 +10,12 @@ const SongSwiper = () => {
     const { feed, currentIndex, setCurrentIndex, isLoading, refreshFeed } = useFeed();
     const { userId } = useAuth();
 
+    useEffect(() => {
+        if (feed.length === 0 && !isLoading) {
+            refreshFeed();
+        }
+    }, [feed.length, isLoading, refreshFeed]);
+
     const handleDecision = async (type) => {
         const song = feed[currentIndex];
         if (!song || !userId) return;
@@ -19,7 +25,6 @@ const SongSwiper = () => {
             await axios.post(`${API_URL}/interacciones/${endpoint}`, {
                 id_usuario: userId,
                 cancion: {
-                    // Mantenemos consistencia con lo que espera el backend
                     id_externo: String(song.id_externo || song.id), 
                     plataforma: 'DEEZER',
                     titulo: song.titulo,
@@ -32,7 +37,6 @@ const SongSwiper = () => {
             console.error("Error guardando interacción", e);
         }
 
-        // Avanzar al siguiente
         if (currentIndex === feed.length - 1) {
             refreshFeed();
         } else {
@@ -40,10 +44,13 @@ const SongSwiper = () => {
         }
     };
 
+    
     if (isLoading && feed.length === 0) {
         return (
-            <div className="feed-container" style={{justifyContent:'center', color:'white'}}>
-                <p>🧬 Evolucionando tu playlist...</p>
+            <div className="feed-container">
+                <p style={{ color: '#6a11cb', fontWeight: 'bold' }}>
+                    🧬 Evolucionando tu playlist...
+                </p>
             </div>
         );
     }
@@ -54,17 +61,15 @@ const SongSwiper = () => {
         <div className="feed-container">
             {currentSong ? (
                 <SongCard 
-                    // EL FIX: Al cambiar el ID, SongCard se reinicia completamente
-                    // Esto arregla el problema de los audios que no cargan
                     key={currentSong.id_externo || currentSong.id} 
                     song={currentSong} 
                     onLike={() => handleDecision('like')}
                     onDislike={() => handleDecision('dislike')}
                 />
             ) : (
-                <div style={{padding:20, color:'white', textAlign:'center'}}>
-                    <h3>No hay más canciones en el pool.</h3>
-                    <button className="btn-primary" onClick={refreshFeed} style={{marginTop:'20px'}}>
+                <div style={{ padding: 20, color: '#222', textAlign: 'center' }}>
+                    <h3 style={{ marginBottom: '20px' }}>No hay más canciones disponibles.</h3>
+                    <button className="btn-primary" onClick={refreshFeed}>
                         🔄 Reintentar evolución
                     </button>
                 </div>

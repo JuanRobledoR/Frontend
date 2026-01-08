@@ -1,43 +1,111 @@
-import { useState, useEffect } from 'react'
-import { useAuth } from './AuthContext'; // Importa el hook
+import React, { useState, useEffect, useRef } from 'react';
+import { useAuth } from './AuthContext';
 import axios from 'axios';
-import './App.css'; 
+import { FiSearch, FiPlay, FiPause, FiPlus, FiHeart, FiX, FiDisc, FiMusic } from 'react-icons/fi';
+import './index.css'; 
 
 const API_URL = "http://localhost:8000";
-const USER_ID = 1; // Usuario temporal
 
-function Buscador() {
-  const { userId } = useAuth(); // Obtén el ID real
-  const [busqueda, setBusqueda] = useState("");
-  const [resultados, setResultados] = useState([])
-  const [playlists, setPlaylists] = useState([])
-  const [showModal, setShowModal] = useState(false)
-  const [selectedTrack, setSelectedTrack] = useState(null)
+// Tarjeta resultado
+const SearchResultCard = ({ track, onLike, onAdd }) => {
+    const [playing, setPlaying] = useState(false);
+    const audioRef = useRef(null);
 
-  // Cargar playlists del usuario al iniciar (para el menú de agregar)
+    const togglePlay = () => {
+        const audio = audioRef.current;
+        if (!audio) return;
+
+        if (playing) {
+            audio.pause();
+            setPlaying(false);
+        } else {
+            audio.play().catch(e => console.error("Error al reproducir", e));
+            setPlaying(true);
+        }
+    };
+
+    return (
+        <div className="mini-song-card fade-in">
+            <img src={track.imagen} alt={track.titulo} className="mini-card-img"/>
+            
+            <div className="mini-card-info">
+                <h4>{track.titulo}</h4>
+                <p>{track.artista}</p>
+            </div>
+
+            <div className="mini-card-actions">
+                {track.preview ? (
+                    <button className="btn-mini-action play" onClick={togglePlay}>
+                        {playing ? <FiPause size={16} /> : <FiPlay size={16} />}
+                    </button>
+                ) : (
+                    <div style={{width: 35, height: 35, display:'flex', alignItems:'center', justifyContent:'center', opacity:0.3}}>
+                        <FiDisc size={16}/>
+                    </div>
+                )}
+
+                <button className="btn-mini-action like" onClick={() => onLike(track)}>
+                    <FiHeart size={16} />
+                </button>
+
+                <button className="btn-mini-action add" onClick={() => onAdd(track)}>
+                    <FiPlus size={16} />
+                </button>
+            </div>
+
+            {track.preview && (
+                <audio 
+                    ref={audioRef} 
+                    src={track.preview} 
+                    onEnded={() => setPlaying(false)} 
+                />
+            )}
+        </div>
+    );
+};
+
+// Componente principal
+const Buscador = () => {
+  const { userId } = useAuth();
+  const [query, setQuery] = useState("");
+  const [resultados, setResultados] = useState([]);
+  const [playlists, setPlaylists] = useState([]);
+  
+  const [showModal, setShowModal] = useState(false);
+  const [selectedTrack, setSelectedTrack] = useState(null);
+  const [buscando, setBuscando] = useState(false);
+
+  // Carga playlist usuario
   useEffect(() => {
-    axios.get(`${API_URL}/interacciones/playlist/${userId}`)
-      .then(res => setPlaylists(res.data))
-      .catch(e => console.error(e));
-  }, []);
+    if (userId) {
+        axios.get(`${API_URL}/interacciones/playlist/${userId}`)
+        .then(res => setPlaylists(res.data))
+        .catch(e => console.error("Error cargando playlists:", e));
+    }
+  }, [userId]);
 
-  // Efecto Debounce para buscar
+  // Búsqueda debounce
   useEffect(() => {
-    if (busqueda.trim() === "") { setResultados([]); return }
+    if (query.trim() === "") { 
+        setResultados([]); 
+        return; 
+    }
     const timer = setTimeout(() => {
-      fetch(`${API_URL}/buscar?q=${busqueda}`)
-        .then(res => res.json()).then(data => setResultados(data))
-    }, 500)
-    return () => clearTimeout(timer)
-  }, [busqueda])
+      setBuscando(true);
+      axios.get(`${API_URL}/buscar?q=${query}`)
+        .then(res => {
+            setResultados(res.data);
+            setBuscando(false);
+        })
+        .catch(err => {
+            console.error(err);
+            setBuscando(false);
+        });
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [query]);
 
-  // Abrir menú de playlists
-  const handleAddToClick = (track) => {
-    setSelectedTrack(track);
-    setShowModal(true);
-  }
-
-  // --- NUEVA FUNCIÓN PARA DAR LIKE DIRECTO ---
+  // Like rápido
   const handleQuickLike = (cancion) => {
     axios.post(`${API_URL}/interacciones/like`, {
         id_usuario: userId,
@@ -50,94 +118,106 @@ function Buscador() {
             preview_url: cancion.preview
         }
     })
-    .then(() => alert("Le diste Like ❤️"))
-    .catch((error) => {
-        console.error(error);
-        alert("Error al dar like");
-    });
+    .then(() => alert(`❤️ Agregada a Likes`))
+    .catch((error) => console.error(error));
   };
 
-  // Guardar canción en la playlist elegida
+  const handleAddToClick = (track) => {
+    setSelectedTrack(track);
+    setShowModal(true);
+  };
+
+  // Guardado playlist
   const saveToPlaylist = (playlistId) => {
+    if (!selectedTrack) return;
     axios.post(`${API_URL}/interacciones/playlist/add`, {
         id_playlist: playlistId,
         cancion: {
             id_externo: String(selectedTrack.id),
-            plataforma: 'DEEZER', // Asumimos Deezer por el buscador actual
+            plataforma: 'DEEZER',
             titulo: selectedTrack.titulo,
             artista: selectedTrack.artista,
             imagen_url: selectedTrack.imagen,
             preview_url: selectedTrack.preview
         }
     }).then(() => {
-        alert("¡Canción agregada a la playlist!");
+        alert("¡Agregada correctamente!");
         setShowModal(false);
-    }).catch(() => alert("Error al agregar"));
-  }
+    }).catch(() => alert("Error al agregar a playlist"));
+  };
+
+  const limpiarBusqueda = () => {
+    setQuery('');
+    setResultados([]);
+  };
 
   return (
-    <div className="page-content" style={{padding: '20px', paddingBottom:'100px'}}>
-      <h1>🔍 Buscador</h1>
+    <div className="search-page-container">
       
-      <input 
-        type="text" 
-        placeholder="Bad Bunny, Daft Punk..." 
-        value={busqueda}
-        onChange={(e) => setBusqueda(e.target.value)}
-        style={{ width: '100%', padding: '12px', borderRadius: '20px', border:'none', marginBottom: '20px', fontSize:'16px' }}
-      />
-
-      <div className="resultados">
-        {resultados.map((cancion) => (
-          <div key={cancion.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#222', padding: '10px', marginBottom: '10px', borderRadius: '10px' }}>
-            <img src={cancion.imagen} alt="cover" style={{ width: 50, height: 50, borderRadius: '5px' }} />
-            <div style={{flex: 1, textAlign:'left'}}>
-              <div style={{ fontWeight: 'bold' }}>{cancion.titulo}</div>
-              <div style={{ fontSize: '0.8em', color: '#ccc' }}>{cancion.artista}</div>
-            </div>
-            
-            {/* Reproductor Mini */}
-            {cancion.preview && <audio controls src={cancion.preview} style={{height: 30, width: 80}} />}
-
-            {/* --- NUEVO BOTÓN: LIKE DIRECTO --- */}
-            <button 
-                onClick={() => handleQuickLike(cancion)} 
-                style={{fontSize:'1.2rem', background:'transparent', border:'none', cursor:'pointer', marginRight:'5px'}}
-                title="Me Gusta"
-            >
-                ❤️
-            </button>
-
-            {/* Botón Agregar a Playlist (+), abre modal */}
-            <button 
-                onClick={() => handleAddToClick(cancion)} 
-                style={{fontSize:'1.2rem', background:'transparent', border:'none', cursor:'pointer'}}
-                title="Agregar a Playlist"
-            >
-                ➕
-            </button>
-          </div>
-        ))}
+      <div className="search-header">
+        <h2 style={{color: '#6a11cb', margin: '0 0 20px 0'}}>Explorar</h2>
+        <div className="neumorphic-search-bar">
+            <FiSearch size={20} color="#888" style={{marginLeft: '15px'}}/>
+            <input 
+                type="text" 
+                placeholder="Bad Bunny, Daft Punk, Phonk..." 
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                className="search-input-clean"
+            />
+            {query && (
+                <button type="button" onClick={limpiarBusqueda} className="btn-clear">
+                    <FiX size={18} />
+                </button>
+            )}
+        </div>
       </div>
 
-      {/* MODAL PARA ELEGIR PLAYLIST */}
+      <div className="search-results-area">
+        {buscando && <p style={{textAlign:'center', marginTop: 20, color:'#666'}}>🎧 Buscando frecuencias...</p>}
+        
+        {!buscando && resultados.length === 0 && query === '' && (
+            <div className="empty-state-search">
+                <FiDisc size={50} color="#cbd5e0" />
+                <p>Escribe tu artista favorito para comenzar.</p>
+            </div>
+        )}
+
+        <div className="results-grid">
+            {resultados.map((track) => (
+                <SearchResultCard 
+                    key={track.id} 
+                    track={track} 
+                    onLike={handleQuickLike} 
+                    onAdd={handleAddToClick} 
+                />
+            ))}
+        </div>
+      </div>
+
       {showModal && (
-        <div style={{position:'fixed', top:0, left:0, width:'100%', height:'100%', background:'rgba(0,0,0,0.8)', zIndex:2000, display:'flex', justifyContent:'center', alignItems:'center'}}>
-            <div style={{background:'#222', padding:'20px', borderRadius:'10px', width:'80%', maxWidth:'300px'}}>
-                <h3>Agregar a...</h3>
-                <div style={{display:'flex', flexDirection:'column', gap:'10px', maxHeight:'300px', overflowY:'auto'}}>
-                    {playlists.length === 0 && <p>No tienes playlists creadas.</p>}
+        <div className="modal-overlay">
+            <div className="neumorphic-modal">
+                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'15px'}}>
+                    <h3 style={{margin:0, color:'#6a11cb'}}>Agregar a...</h3>
+                    <button onClick={() => setShowModal(false)} className="btn-mini-action" style={{boxShadow:'none'}}>
+                        <FiX size={20}/>
+                    </button>
+                </div>
+                
+                <div className="modal-list">
+                    {playlists.length === 0 && <p style={{fontSize:'0.9rem'}}>No tienes playlists creadas.</p>}
                     {playlists.map(p => (
-                        <button key={p.id} onClick={() => saveToPlaylist(p.id)} style={{padding:'10px', background:'#333', border:'none', color:'white', textAlign:'left', borderRadius:'5px'}}>
-                            💿 {p.nombre}
+                        <button key={p.id} onClick={() => saveToPlaylist(p.id)} className="playlist-option-btn">
+                            <FiMusic style={{marginRight:10}}/> {p.nombre}
                         </button>
                     ))}
                 </div>
-                <button onClick={() => setShowModal(false)} style={{marginTop:'15px', background:'red', border:'none', color:'white', padding:'5px 10px', borderRadius:'5px'}}>Cancelar</button>
             </div>
         </div>
       )}
     </div>
-  )
-}
-export default Buscador
+  );
+};
+
+export default Buscador;

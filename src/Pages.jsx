@@ -1,14 +1,74 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import axios from 'axios';
 import Buscador from './Buscador';
 import { useAuth } from './AuthContext';
-import { FiPlay, FiHeart, FiFolder, FiTrash2, FiPlus, FiMusic, FiChevronDown, FiChevronUp, FiX } from 'react-icons/fi';
+import { 
+    FiPlay, FiPause, FiHeart, FiFolder, FiTrash2, FiPlus, 
+    FiMusic, FiChevronDown, FiChevronUp, FiX, FiUser, FiDisc, FiCpu 
+} from 'react-icons/fi';
+import './index.css';
 
 const API_URL = "http://localhost:8000";
 
-const containerStyle = { padding: '20px', paddingBottom: '100px', minHeight: '100vh', backgroundColor: '#000', color: 'white', overflowY: 'auto' };
+// --- COMPONENTE REUTILIZABLE PARA FILAS DE CANCIONES (Audio + Estilo) ---
+const TrackRow = ({ track, subtitle, image, onAction1, icon1, onAction2, icon2, isPlayingProp }) => {
+    const [playing, setPlaying] = useState(false);
+    const audioRef = useRef(null);
 
-// --- 1. LIKES (Con Folder para Playlist y Audio) ---
+    const togglePlay = (e) => {
+        e.stopPropagation();
+        if (!audioRef.current) return;
+        if (playing) {
+            audioRef.current.pause();
+            setPlaying(false);
+        } else {
+            audioRef.current.play().catch(err => console.error(err));
+            setPlaying(true);
+        }
+    };
+
+    return (
+        <div className="neumorphic-list-item fade-in">
+            <div className="list-item-left">
+                <img src={image || track.imagen || track.imagen_url || 'https://via.placeholder.com/50'} alt="cover" className="list-item-img" />
+                <div className="list-item-info">
+                    <h4>{track.titulo}</h4>
+                    <p>{subtitle || track.artista}</p>
+                </div>
+            </div>
+
+            <div className="list-item-actions">
+                {/* Reproductor */}
+                {(track.preview || track.preview_url) && (
+                    <button className={`btn-icon-small ${playing ? 'active' : ''}`} onClick={togglePlay}>
+                        {playing ? <FiPause /> : <FiPlay />}
+                    </button>
+                )}
+                
+                {/* Botón Acción 1 (Ej: Folder o Like) */}
+                {onAction1 && (
+                    <button className="btn-icon-small" onClick={(e) => { e.stopPropagation(); onAction1(track); }}>
+                        {icon1}
+                    </button>
+                )}
+
+                {/* Botón Acción 2 (Ej: Borrar) */}
+                {onAction2 && (
+                    <button className="btn-icon-small danger" onClick={(e) => { e.stopPropagation(); onAction2(track); }}>
+                        {icon2}
+                    </button>
+                )}
+
+                {/* Audio Oculto */}
+                {(track.preview || track.preview_url) && (
+                    <audio ref={audioRef} src={track.preview || track.preview_url} onEnded={() => setPlaying(false)} />
+                )}
+            </div>
+        </div>
+    );
+};
+
+// --- 1. LIKES PAGE ---
 export const LikesPage = () => {
   const [likes, setLikes] = useState([]);
   const [playlists, setPlaylists] = useState([]);
@@ -35,27 +95,41 @@ export const LikesPage = () => {
   };
 
   return (
-    <div style={containerStyle}>
-      <h1 style={{textAlign:'left'}}>💜 Mis Me Gusta</h1>
-      <div style={{display:'flex', flexDirection:'column', gap:'15px', marginTop:'20px'}}>
+    <div className="page-container">
+      <div className="page-header">
+          <div className="header-icon-box"><FiHeart color="#e91e63" size={24}/></div>
+          <h1>Mis Me Gusta</h1>
+      </div>
+
+      <div className="list-container">
+        {likes.length === 0 && <p className="empty-msg">No has dado like a nada aún.</p>}
         {likes.map((t) => (
-          <div key={t.id} style={{display:'flex', gap:'10px', background:'#1a1a1a', padding:'12px', borderRadius:'12px', alignItems:'center'}}>
-            <img src={t.imagen} style={{width:50, height:50, borderRadius:8}} alt="cover" />
-            <div style={{flex: 1, textAlign:'left'}}>
-              <div style={{fontWeight:'bold'}}>{t.titulo}</div>
-              <div style={{fontSize:'0.8rem', color:'#aaa'}}>{t.artista}</div>
-            </div>
-            {t.preview && <audio controls src={t.preview} style={{height:30, width:100}} />}
-            <button onClick={() => {setSelectedTrack(t); setShowModal(true)}} style={{background:'none', border:'none', color:'white'}}><FiFolder size={22}/></button>
-          </div>
+          <TrackRow 
+            key={t.id} 
+            track={t} 
+            subtitle={t.artista}
+            image={t.imagen}
+            onAction1={() => { setSelectedTrack(t); setShowModal(true); }}
+            icon1={<FiFolder size={18}/>}
+          />
         ))}
       </div>
+
+      {/* Modal Neumórfico Reutilizable */}
       {showModal && (
-        <div style={{position:'fixed', top:0, left:0, width:'100%', height:'100%', background:'rgba(0,0,0,0.8)', zIndex:2000, display:'flex', justifyContent:'center', alignItems:'center'}}>
-            <div style={{background:'#222', padding:'20px', borderRadius:'10px', width:'280px'}}>
-                <h3>Guardar en...</h3>
-                {playlists.map(p => <button key={p.id} onClick={() => saveToPlaylist(p.id)} style={{display:'block', width:'100%', padding:'10px', margin:'5px 0', background:'#333', color:'white', border:'none'}}>💿 {p.nombre}</button>)}
-                <button onClick={() => setShowModal(false)} style={{width:'100%', background:'red', border:'none', color:'white', padding:'5px', marginTop:'10px'}}>Cerrar</button>
+        <div className="modal-overlay">
+            <div className="neumorphic-modal">
+                <div style={{display:'flex', justifyContent:'space-between', marginBottom:15}}>
+                    <h3>Guardar en...</h3>
+                    <button onClick={() => setShowModal(false)} className="btn-icon-small"><FiX/></button>
+                </div>
+                <div className="modal-list">
+                    {playlists.map(p => (
+                        <button key={p.id} onClick={() => saveToPlaylist(p.id)} className="playlist-option-btn">
+                            <FiDisc style={{marginRight:10}}/> {p.nombre}
+                        </button>
+                    ))}
+                </div>
             </div>
         </div>
       )}
@@ -63,7 +137,7 @@ export const LikesPage = () => {
   );
 };
 
-// --- 2. HISTORIAL (Con Like y Audio) ---
+// --- 2. HISTORIAL PAGE ---
 export const HistoryPage = () => {
     const [historial, setHistorial] = useState([]);
     const { userId } = useAuth();
@@ -83,30 +157,29 @@ export const HistoryPage = () => {
     };
 
     return (
-        <div style={containerStyle}>
-            <h1 style={{textAlign:'left'}}>📜 Historial</h1>
-            <div style={{display:'flex', flexDirection:'column', gap:'10px', marginTop:'20px'}}>
+        <div className="page-container">
+            <div className="page-header">
+                <div className="header-icon-box"><FiDisc color="#6a11cb" size={24}/></div>
+                <h1>Historial</h1>
+            </div>
+            <div className="list-container">
+                {historial.length === 0 && <p className="empty-msg">Tu historial está vacío.</p>}
                 {historial.map((item, idx) => (
-                    <div key={idx} style={{display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px', background: '#111', borderRadius:'10px'}}>
-                        <div style={{display:'flex', alignItems:'center', gap:'15px'}}>
-                             <img src={item.imagen} style={{width:40, height:40, borderRadius:5}} alt="cover" />
-                             <div style={{textAlign:'left'}}>
-                                 <div style={{fontWeight:'bold', fontSize:'0.9rem'}}>{item.titulo}</div>
-                                 <div style={{fontSize:'0.7rem', color:'#888'}}>{item.artista}</div>
-                             </div>
-                        </div>
-                        <div style={{display:'flex', gap:'10px', alignItems:'center'}}>
-                            {item.preview && <audio controls src={item.preview} style={{height:30, width:90}} />}
-                            <button onClick={() => darLike(item)} style={{background:'none', border:'none', color:'#ff4b2b'}}><FiHeart size={20}/></button>
-                        </div>
-                    </div>
+                    <TrackRow 
+                        key={idx} 
+                        track={item}
+                        subtitle={item.artista}
+                        image={item.imagen}
+                        onAction1={() => darLike(item)}
+                        icon1={<FiHeart size={18} color="#ff4b2b"/>}
+                    />
                 ))}
             </div>
         </div>
     );
 };
 
-// --- 3. PLAYLISTS (LIBRARY COMPLETA RESTAURADA) ---
+// --- 3. PLAYLISTS PAGE (Restaurada y Estilizada) ---
 export const PlaylistsPage = () => {
   const [tab, setTab] = useState('listas');
   const [playlists, setPlaylists] = useState([]);
@@ -155,7 +228,7 @@ export const PlaylistsPage = () => {
 
   const borrarPlaylist = (e, id) => {
     e.stopPropagation();
-    if(confirm("¿Borrar playlist completa?")) axios.delete(`${API_URL}/interacciones/playlist/${id}`).then(cargarPlaylists);
+    if(window.confirm("¿Borrar playlist completa?")) axios.delete(`${API_URL}/interacciones/playlist/${id}`).then(cargarPlaylists);
   };
 
   const eliminarTrack = (pid, tid) => {
@@ -165,76 +238,95 @@ export const PlaylistsPage = () => {
   };
 
   return (
-    <div style={containerStyle}>
-      <div style={{display:'flex', gap:'10px', marginBottom:'20px'}}>
-        <button onClick={() => setTab('listas')} style={{flex:1, padding:'12px', background: tab==='listas'?'#1DB954':'#333', border:'none', borderRadius:'20px', color:'white', fontWeight:'bold'}}>Mis Playlists</button>
-        <button onClick={() => setTab('buscar')} style={{flex:1, padding:'12px', background: tab==='buscar'?'#1DB954':'#333', border:'none', borderRadius:'20px', color:'white', fontWeight:'bold'}}>🔍 Buscar</button>
+    <div className="page-container">
+      {/* Tabs Neumórficos */}
+      <div className="tabs-container">
+        <button onClick={() => setTab('listas')} className={`tab-btn ${tab==='listas' ? 'active' : ''}`}>Mis Playlists</button>
+        <button onClick={() => setTab('buscar')} className={`tab-btn ${tab==='buscar' ? 'active' : ''}`}>🔍 Buscar</button>
       </div>
 
       {tab === 'listas' ? (
         <>
-            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'15px'}}>
-                <h1 style={{margin:0}}>Biblioteca</h1>
-                <button onClick={() => {const n = prompt("Nombre:"); if(n) axios.post(`${API_URL}/interacciones/playlist`, {id_usuario:userId, nombre:n}).then(cargarPlaylists)}} style={{background:'#333', border:'none', color:'white', padding:'5px 15px', borderRadius:'20px'}}>+ Manual</button>
+            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'20px'}}>
+                <h1 style={{margin:0, fontSize:'1.5rem'}}>Biblioteca</h1>
+                <button onClick={() => {const n = prompt("Nombre:"); if(n) axios.post(`${API_URL}/interacciones/playlist`, {id_usuario:userId, nombre:n}).then(cargarPlaylists)}} className="btn-small-neumorphic">
+                    <FiPlus/> Manual
+                </button>
             </div>
 
-            <div style={{display:'flex', gap:'10px', marginBottom:'20px'}}>
-                <button onClick={crearPlaylistIA} style={{flex:1, padding:'10px', background:'#8e24aa', color:'white', border:'none', borderRadius:'10px', fontWeight:'bold'}}>🧬 Crear con IA</button>
-                <button onClick={importarSpotify} style={{flex:1, padding:'10px', background:'#1DB954', color:'white', border:'none', borderRadius:'10px', fontWeight:'bold'}}>Spotify</button>
-                <button disabled style={{flex:1, padding:'10px', background:'#444', color:'#777', border:'none', borderRadius:'10px'}}>Deezer</button>
+            {/* Botones de Acción Global */}
+            <div style={{display:'flex', gap:'15px', marginBottom:'25px'}}>
+                <button onClick={crearPlaylistIA} className="action-btn-large purple">
+                    <FiCpu size={20}/> Crear con IA
+                </button>
+                <button onClick={importarSpotify} className="action-btn-large green">
+                    <FiMusic size={20}/> Spotify
+                </button>
             </div>
             
-            {playlists.map(p => (
-                <div key={p.id} style={{background:'#1a1a1a', borderRadius:12, marginBottom:'12px', overflow:'hidden', border: '1px solid #333'}}>
-                    <div onClick={() => toggleExpand(p.id)} style={{padding:'18px', display:'flex', justifyContent:'space-between', alignItems:'center', cursor:'pointer', background:'#282828'}}>
-                        <div style={{display:'flex', alignItems:'center', gap:'12px'}}>
-                            <FiMusic size={20} color="#1DB954"/> <strong>{p.nombre}</strong>
+            <div className="list-container">
+                {playlists.map(p => (
+                    <div key={p.id} className={`playlist-card ${expandedId === p.id ? 'expanded' : ''}`}>
+                        <div className="playlist-header" onClick={() => toggleExpand(p.id)}>
+                            <div style={{display:'flex', alignItems:'center', gap:'12px'}}>
+                                <div className="playlist-icon"><FiMusic /></div>
+                                <strong>{p.nombre}</strong>
+                            </div>
+                            <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
+                                <button onClick={(e) => borrarPlaylist(e, p.id)} className="btn-icon-small danger"><FiTrash2 size={16}/></button>
+                                {expandedId === p.id ? <FiChevronUp /> : <FiChevronDown />}
+                            </div>
                         </div>
-                        <div style={{display:'flex', alignItems:'center', gap:'15px'}}>
-                            {expandedId === p.id ? <FiChevronUp /> : <FiChevronDown />}
-                            <button onClick={(e) => borrarPlaylist(e, p.id)} style={{background:'none', border:'none', color:'#ff4b2b'}}><FiTrash2 size={18}/></button>
-                        </div>
-                    </div>
-                    {expandedId === p.id && (
-                        <div style={{padding:'10px', background:'#121212'}}>
-                            <button onClick={() => completarIA(p.id)} disabled={loadingIA} style={{width:'100%', padding:'12px', background:'linear-gradient(90deg, #6a11cb 0%, #2575fc 100%)', border:'none', color:'white', borderRadius:'8px', marginBottom:'15px', fontWeight:'bold'}}>
-                                {loadingIA ? '⏳ Analizando vibra...' : '✨ Completar Playlist con IA'}
-                            </button>
-                            {tracks.length === 0 && <p style={{textAlign:'center', color:'#555'}}>Vacía</p>}
-                            {tracks.map(t => (
-                                <div key={t.id} style={{display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px', background:'#1a1a1a', marginBottom:'5px', borderRadius:'8px'}}>
-                                    <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
-                                        <img src={t.imagen || 'https://via.placeholder.com/40'} style={{width:35, height:35, borderRadius:4}} alt="song" />
-                                        <div style={{textAlign:'left'}}>
-                                            <div style={{fontSize:'0.9rem', fontWeight:'bold'}}>{t.titulo}</div>
-                                            <div style={{fontSize:'0.7rem', color:'#888'}}>{t.artista}</div>
-                                        </div>
-                                    </div>
-                                    <div style={{display:'flex', alignItems:'center', gap:'10px'}}>
-                                        {t.preview && <FiPlay size={16} onClick={(e) => {e.stopPropagation(); new Audio(t.preview).play()}} style={{cursor:'pointer'}}/>}
-                                        <button onClick={() => eliminarTrack(p.id, t.id)} style={{color:'#ff4b2b', background:'none', border:'none'}}><FiX /></button>
-                                    </div>
+
+                        {expandedId === p.id && (
+                            <div className="playlist-body">
+                                <button onClick={() => completarIA(p.id)} disabled={loadingIA} className="ia-complete-btn">
+                                    {loadingIA ? '⏳ Analizando vibra...' : '✨ Completar Playlist con IA'}
+                                </button>
+                                
+                                {tracks.length === 0 && <p style={{textAlign:'center', color:'#888', fontStyle:'italic'}}>Playlist vacía</p>}
+                                
+                                <div className="tracks-list">
+                                    {tracks.map(t => (
+                                        <TrackRow 
+                                            key={t.id}
+                                            track={t}
+                                            subtitle={t.artista}
+                                            image={t.imagen}
+                                            onAction2={() => eliminarTrack(p.id, t.id)}
+                                            icon2={<FiX size={16}/>}
+                                        />
+                                    ))}
                                 </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            ))}
+                            </div>
+                        )}
+                    </div>
+                ))}
+            </div>
         </>
       ) : <Buscador />}
     </div>
   );
 };
 
-// --- 4. PERFIL (Con Export) ---
+// --- 4. PROFILE PAGE ---
 export const ProfilePage = () => {
     const { user, logout } = useAuth();
     return (
-        <div style={containerStyle}>
-            <div className="neumorphic-card" style={{padding:'40px', textAlign:'center', marginTop:'50px', background:'#1a1a1a'}}>
-                <h1 style={{color:'white'}}>👤 Mi Perfil</h1>
-                <p style={{color:'#aaa'}}>Usuario: {user?.username || 'Tester'}</p>
-                <button onClick={logout} className="btn-primary" style={{marginTop:'30px', background:'#ff4b2b', color:'white', width:'100%'}}>Cerrar Sesión 🚪</button>
+        <div className="page-container" style={{
+            justifyContent: 'center', // Centrado Vertical
+            alignItems: 'center',     // Centrado Horizontal
+            height: '100%'            // Usa toda la altura disponible
+        }}>
+            <div className="neumorphic-card profile-card">
+                <div className="profile-avatar">
+                    <FiUser size={40} color="#6a11cb"/>
+                </div>
+                <h2>Mi Perfil</h2>
+                <p className="profile-user">Usuario: <strong>{user?.username || 'Invitado'}</strong></p>
+                <button onClick={logout} className="logout-btn">
+                    Cerrar Sesión 🚪
+                </button>
             </div>
         </div>
     );

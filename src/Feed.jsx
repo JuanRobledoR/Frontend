@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import './App.css'; // Asegúrate de tener estilos para .feed-scroll-container
+import './App.css'; 
 
-// --- MusicCard (Sin cambios, solo props) ---
+// Tarjeta música
 function MusicCard({ cancion }) {
   const [jugando, setJugando] = useState(false);
   const audioRef = useRef(null);
@@ -11,7 +11,6 @@ function MusicCard({ cancion }) {
       if (jugando) {
         audioRef.current.pause();
       } else {
-        // Pausar otros audios si quisieras implementar exclusividad
         audioRef.current.play();
       }
       setJugando(!jugando);
@@ -44,38 +43,28 @@ function MusicCard({ cancion }) {
   );
 }
 
-// --- LOGICA DEL FEED INFINITO ---
+// Lógica feed
 function Feed() {
   const [feed, setFeed] = useState([]);
   const [cargando, setCargando] = useState(false);
-  
-  // playlist semilla
   const PLAYLIST_ID = "0eDv7SF2SNwIHGpc2vJWzt"; 
-  //0M0kDGL860f0n8PZ2usv6B
-  //6GjULfC3dnq103KCta8plp
-  //0eDv7SF2SNwIHGpc2vJWzt
-  
-
-  // Referencia al contenedor para detectar scroll
   const scrollContainerRef = useRef(null);
 
-  // --- FUNCIÓN DE CARGA INTELIGENTE (POST) ---
+  // Carga lote
   const cargarLoteInfinito = useCallback(async () => {
     if (cargando) return;
     setCargando(true);
     console.log("🔄 Cargando lote infinito...");
 
     try {
-        // 1. Recopilamos IDs vistos para enviarlos a la lista negra
         const seenIds = feed.map(t => t.id);
 
-        // 2. Petición POST con el payload
         const response = await fetch('http://localhost:8000/feed-playlist', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 playlist_id: PLAYLIST_ID,
-                limit: 10, // Pedimos lotes de 10 para que cargue rápido
+                limit: 10, 
                 seen_ids: seenIds
             })
         });
@@ -86,32 +75,26 @@ function Feed() {
         
         if (nuevasCanciones.length > 0) {
             console.log(`✅ Recibidas ${nuevasCanciones.length} canciones nuevas.`);
-            // Añadimos al final (append)
             setFeed(prev => [...prev, ...nuevasCanciones]);
-        } else {
-            console.log("⚠️ Backend no devolvió canciones (posiblemente filtro estricto).");
-        }
+        } 
 
     } catch (error) {
         console.error("❌ Error cargando feed:", error);
     } finally {
         setCargando(false);
     }
-  }, [feed, cargando]); // Dependencias del useCallback
+  }, [feed, cargando]); 
 
-  // 1. Carga Inicial (Mount)
+  // Carga inicial
   useEffect(() => {
-    // Solo cargamos si está vacío al inicio
     if (feed.length === 0) {
         cargarLoteInfinito();
     }
-  }, []); // Array vacío = solo al montar
+  }, []); 
 
-  // 2. Handler de Scroll
+  // Control scroll
   const handleScroll = (e) => {
     const { scrollTop, clientHeight, scrollHeight } = e.target;
-    
-    // Si estamos cerca del final (a 100px) y no estamos cargando
     if (scrollHeight - scrollTop <= clientHeight + 300 && !cargando) {
         cargarLoteInfinito();
     }
@@ -124,7 +107,7 @@ function Feed() {
         style={{ 
             height: '100vh', 
             overflowY: 'auto', 
-            scrollSnapType: 'y mandatory' // Efecto "Tiktok" opcional
+            scrollSnapType: 'y mandatory' 
         }}
         ref={scrollContainerRef}
     >
@@ -133,7 +116,6 @@ function Feed() {
       )}
 
       {feed.map((cancion, index) => (
-         // scrollSnapAlign ayuda a centrar las cartas si usas scrollSnapType
          <div key={`${cancion.id}-${index}`} style={{ scrollSnapAlign: 'start' }}>
             <MusicCard cancion={cancion} />
          </div>
@@ -145,7 +127,6 @@ function Feed() {
         </div>
       )}
       
-      {/* Botón flotante de Debug por si el scroll falla */}
       <button 
         onClick={cargarLoteInfinito}
         style={{

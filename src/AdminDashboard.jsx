@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
+// Renderiza panel de métricas
 export const AdminDashboard = () => {
     const [stats, setStats] = useState(null);
     const API_URL = "http://localhost:8000";
 
+    // Petición de estadística al montar
     useEffect(() => {
         axios.get(`${API_URL}/admin/stats`)
             .then(res => setStats(res.data))

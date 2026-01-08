@@ -1,3 +1,4 @@
+/* Configuración base */
 #root {
   max-width: 1280px;
   margin: 0 auto;
@@ -5,6 +6,7 @@
   text-align: center;
 }
 
+/* Animación logo */
 .logo {
   height: 6em;
   padding: 1.5em;
@@ -19,12 +21,8 @@
 }
 
 @keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -41,18 +39,19 @@
   color: #888;
 }
 
-/* Pega esto en App.css */
+/* Contenedor scroll infinito */
 .feed-container {
   height: 100vh;
-  width: 100vw; /* Asegura ancho completo */
+  width: 100vw; 
   overflow-y: scroll;
   scroll-snap-type: y mandatory;
   background-color: #000;
-  position: absolute; /* Para tapar todo */
+  position: absolute; 
   top: 0;
   left: 0;
 }
 
+/* Tarjeta de canción */
 .music-card {
   height: 100vh;
   width: 100%;
@@ -83,7 +82,7 @@
   z-index: 3;
   margin-top: auto;
   width: 90%;
-  padding-bottom: 80px; /* Espacio para que no choque abajo */
+  padding-bottom: 80px; 
   color: white;
   text-align: left;
 }
@@ -103,8 +102,7 @@
   cursor: pointer;
 }
 
-
-/* BARRA DE NAVEGACIÓN INFERIOR */
+/* Navegación móvil */
 .bottom-navbar {
   position: fixed;
   bottom: 0;
@@ -117,7 +115,7 @@
   justify-content: space-around;
   align-items: center;
   z-index: 1000;
-  padding-bottom: 10px; /* Para iPhone X+ */
+  padding-bottom: 10px; 
 }
 
 .nav-item {
@@ -136,14 +134,14 @@
 }
 
 .nav-item.active {
-  color: #1DB954; /* Verde Spotify o tu color favorito */
+  color: #1DB954; 
 }
 
 .nav-item.active .icon {
   transform: scale(1.1);
 }
 
-/* Ajuste para que el contenido no quede tapado por la barra */
+/* Ajuste contenido página */
 .page-content {
   padding-bottom: 80px;
   min-height: 100vh;

@@ -1,7 +1,5 @@
 import React, { useState, useRef } from 'react';
-// CAMBIO AQUÍ: Usamos 'fi'
 import { FiPlay, FiPause, FiHeart, FiX, FiDisc } from 'react-icons/fi'; 
-import './index.css';
 
 const SongCard = ({ song, onLike, onDislike }) => {
   const [jugando, setJugando] = useState(false);
@@ -10,50 +8,45 @@ const SongCard = ({ song, onLike, onDislike }) => {
   if (!song) return null;
 
   const togglePlay = () => {
-      if (audioRef.current) {
-          if (jugando) {
-              audioRef.current.pause();
-              setJugando(false);
-          } else {
-              audioRef.current.play().catch(e => {
-                  console.error("Error de reproducción:", e);
-                  alert("El enlace de esta canción ha expirado. Dale a 'Reintentar evolución' para refrescar el pool.");
-                  setJugando(false);
-              });
-              setJugando(true);
-          }
-      }
+    if (audioRef.current) {
+      if (jugando) { audioRef.current.pause(); setJugando(false); } 
+      else { audioRef.current.play().catch(() => setJugando(false)); setJugando(true); }
+    }
   };
 
   return (
-    <div className="music-card-screen">
-      <img src={song.imagen} alt={song.titulo} className="music-card-bg" />
-      <div className="gradient-overlay"></div>
-
-      <div className="central-player-container">
-        {song.preview ? (
-            <button onClick={togglePlay} className="play-btn-lg">
-                {/* Usamos los nuevos iconos Fi */}
-                {jugando ? <FiPause size={40}/> : <FiPlay size={40}/>}
-            </button>
-        ) : <div className="play-btn-lg"><FiDisc size={30}/></div>}
+    <div className="neumorphic-card" style={{ 
+        width: '400px', 
+        padding: '25px',
+        // carta tenga el color gris
+        background: 'var(--color-bg-primary)' 
+    }}>
+      {/* Imagen */}
+      <div style={{ 
+        position: 'relative', width: '100%', aspectRatio: '1/1', borderRadius: '25px', 
+        overflow: 'hidden', boxShadow: '8px 8px 16px #bebebe, -8px -8px 16px #ffffff' 
+      }}>
+        <img src={song.imagen} alt={song.titulo} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        <div style={{ position: 'absolute', bottom: '20px', right: '20px' }}>
+          <button onClick={togglePlay} className="play-btn-neumorphic">
+            {jugando ? <FiPause size={28}/> : <FiPlay size={28} style={{marginLeft: '4px'}}/>}
+          </button>
+        </div>
       </div>
 
-      <div className="info-container-bottom">
-        <h2 style={{margin:0, fontSize:'1.5rem', fontWeight:'bold'}}>{song.titulo}</h2>
-        <p style={{margin:0, opacity:0.8}}>{song.artista}</p>
+      {/* Info */}
+      <div style={{ marginTop: '25px', textAlign: 'left', padding: '0 10px' }}>
+        <h2 style={{ margin: 0, fontSize: '1.6rem', fontWeight: '800', color: '#222' }}>{song.titulo}</h2>
+        <p style={{ margin: '5px 0 0', fontSize: '1.1rem', color: '#666' }}>{song.artista}</p>
       </div>
 
-      <div className="action-buttons-container">
-        <button onClick={onDislike} className="btn-circle-action dislike-btn">
-            <FiX size={30} />
-        </button>
-        <button onClick={onLike} className="btn-circle-action like-btn">
-            <FiHeart size={30} />
-        </button>
+      {/* Botones */}
+      <div style={{ display: 'flex', justifyContent: 'center', gap: '30px', marginTop: '30px' }}>
+        <button onClick={onDislike} className="btn-action-dislike" style={{color: '#222'}}><FiX size={32} /></button>
+        <button onClick={onLike} className="btn-action-like" style={{color: '#ff4b2b'}}><FiHeart size={32} /></button>
       </div>
 
-      {song.preview && <audio ref={audioRef} src={song.preview} loop />}
+      {song.preview && <audio ref={audioRef} src={song.preview} crossOrigin="anonymous" loop onEnded={() => setJugando(false)} />}
     </div>
   );
 };

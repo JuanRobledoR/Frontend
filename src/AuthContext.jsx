@@ -6,6 +6,7 @@ const API_URL = "http://localhost:8000";
 
 export const useAuth = () => useContext(AuthContext);
 
+// Manejo de sesión usuario
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(() => {
         const saved = localStorage.getItem('beatmatch_user');
@@ -15,23 +16,24 @@ export const AuthProvider = ({ children }) => {
     const isAuthenticated = !!user;
     const userId = user?.id_usuario;
 
+    // Sincronización local
     useEffect(() => {
         if (user) localStorage.setItem('beatmatch_user', JSON.stringify(user));
         else localStorage.removeItem('beatmatch_user');
     }, [user]);
 
-    // Lógica real de Login
+    // Petición de ingreso
     const login = async (username, password) => {
         try {
             const res = await axios.post(`${API_URL}/auth/login`, { username, password });
-            setUser(res.data); // Guarda id_usuario y username
+            setUser(res.data); 
             return { success: true };
         } catch (error) {
             return { success: false, msg: error.response?.data?.detail || "Credenciales incorrectas" };
         }
     };
 
-    // Lógica real de Registro
+    // Petición de registro
     const register = async (username, email, password) => {
         try {
             const res = await axios.post(`${API_URL}/auth/register`, { username, email, password });
