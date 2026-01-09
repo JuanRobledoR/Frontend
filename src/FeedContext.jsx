@@ -41,7 +41,7 @@ export const FeedProvider = ({ children }) => {
         }
     }, [userId, feed]);
 
-    // Estado onboarding
+    // Estado onboarding y carga inicial
     useEffect(() => {
         if (isAuthenticated && userId) {
             axios.get(`${API_URL}/usuarios/check-onboarding/${userId}`)
@@ -56,7 +56,6 @@ export const FeedProvider = ({ children }) => {
         }
     }, [isAuthenticated, userId, fetchMoreSongs, feed.length]);
 
-    // Pre-carga
     useEffect(() => {
         const cancionesRestantes = feed.length - currentIndex;
         if (cancionesRestantes > 0 && cancionesRestantes <= 5 && !isFetchingMore) {
@@ -72,6 +71,7 @@ export const FeedProvider = ({ children }) => {
             isLoading, 
             isFetchingMore,
             onboardingComplete,
+            setOnboardingComplete, // Se añade para romper el loop desde Onboarding
             refreshFeed: () => { setFeed([]); setCurrentIndex(0); fetchMoreSongs(true); } 
         }}>
             {children}

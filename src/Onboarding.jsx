@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { useAuth } from './AuthContext';
+import { useFeed } from './FeedContext'; ////Importado para corregir loop
 import { useNavigate } from 'react-router-dom';
 import { FiPlay, FiPause, FiPlus, FiMusic, FiSearch, FiX } from 'react-icons/fi';
 
 const API_URL = "https://backend-nx0h.onrender.com";
 
-/* Hook de ventana */
 function useWindowSize() {
     const [size, setSize] = useState([window.innerWidth, window.innerHeight]);
     useEffect(() => {
@@ -17,7 +17,6 @@ function useWindowSize() {
     return size;
 }
 
-/* Item de búsqueda */
 const SearchItem = ({ track, onSelect, disabled }) => {
     const [playing, setPlaying] = useState(false);
     const audioRef = useRef(null);
@@ -80,9 +79,9 @@ const SearchItem = ({ track, onSelect, disabled }) => {
     );
 };
 
-/* Vista de selección inicial */
 const Onboarding = () => {
     const { userId } = useAuth();
+    const { setOnboardingComplete } = useFeed(); ////Contexto para romper el loop
     const navigate = useNavigate();
     const [width] = useWindowSize();
     
@@ -93,13 +92,20 @@ const Onboarding = () => {
     const [cargando, setCargando] = useState(false);
     const [buscando, setBuscando] = useState(false);
 
+    // Estados para Spotify
+    const [showSpotifyModal, setShowSpotifyModal] = useState(false);
+    const [spotifyUrl, setSpotifyUrl] = useState("");
+
     const isMobile = width < 850;
 
     useEffect(() => {
         if(userId) {
             axios.get(`${API_URL}/usuarios/check-onboarding/${userId}`)
             .then(res => {
-                if (res.data.completado) navigate('/feed');
+                if (res.data.completado) {
+                    setOnboardingComplete(true);
+                    navigate('/feed');
+                }
                 setProgreso(10 - res.data.faltantes);
             })
             .catch(err => console.error(err));
@@ -108,7 +114,7 @@ const Onboarding = () => {
                 .then(res => setSeleccionadas(res.data))
                 .catch(err => console.error("Error cargando semillas guardadas", err));
         }
-    }, [userId, navigate]);
+    }, [userId, navigate, setOnboardingComplete]);
 
     useEffect(() => {
         if (busqueda.trim().length < 2) { setResultados([]); return; }
@@ -120,6 +126,41 @@ const Onboarding = () => {
         }, 600);
         return () => clearTimeout(timer);
     }, [busqueda]);
+
+    // Función crucial para evitar el parpadeo de rutas
+    const finalizarOnboarding = () => {
+        setOnboardingComplete(true);
+        setTimeout(() => navigate('/feed'), 100);
+    };
+
+    const handleSpotifyImport = async () => {
+        if (!spotifyUrl) return;
+        setCargando(true);
+        try {
+            const res = await axios.post(`${API_URL}/importar-playlist-spotify`, {
+                id_usuario: userId,
+                spotify_playlist_id: spotifyUrl
+            });
+            
+            const nuevasCanciones = res.data.canciones;
+            setSeleccionadas(prev => {
+                const combined = [...prev, ...nuevasCanciones];
+                // Evitar duplicados visuales por id
+                return Array.from(new Map(combined.map(item => [item.id, item])).values());
+            });
+            setProgreso(res.data.total_semillas);
+            
+            if (res.data.total_semillas >= 10) {
+                finalizarOnboarding();
+            }
+            setShowSpotifyModal(false);
+            setSpotifyUrl("");
+        } catch (error) {
+            alert("Error importando playlist. Verifica que sea pública.");
+        } finally {
+            setCargando(false);
+        }
+    };
 
     const seleccionarSemilla = async (cancion) => {
         if (cargando || seleccionadas.find(s => s.id === cancion.id)) return;
@@ -135,7 +176,7 @@ const Onboarding = () => {
             });
             setSeleccionadas(prev => [...prev, cancion]);
             setProgreso(res.data.total);
-            if (res.data.total >= 10) navigate('/feed');
+            if (res.data.total >= 10) finalizarOnboarding();
         } catch (error) { console.error(error); } finally { setCargando(false); }
     };
 
@@ -157,6 +198,18 @@ const Onboarding = () => {
                     <FiMusic size={35} color="#6a11cb" style={{ marginBottom: '15px' }} />
                     <h1 style={{ fontSize: '1.6rem', fontWeight: '800' }}>Define tu Estilo</h1>
                     
+                    {/* Botón de Spotify integrado */}
+                    <button 
+                        onClick={() => setShowSpotifyModal(true)}
+                        style={{
+                            width: '100%', padding: '12px', borderRadius: '15px', border: 'none',
+                            background: '#1DB954', color: 'white', fontWeight: 'bold',
+                            cursor: 'pointer', marginBottom: '20px', boxShadow: '4px 4px 8px #bebebe'
+                        }}
+                    >
+                        Importar de Spotify
+                    </button>
+
                     <div style={{ height: '18px', background: '#e0e0e0', borderRadius: '15px', margin: '20px 0', padding: '3px', boxShadow: 'inset 4px 4px 8px #bebebe' }}>
                         <div style={{ width: `${(progreso / 10) * 100}%`, background: 'linear-gradient(90deg, #6a11cb, #2575fc)', height: '100%', borderRadius: '10px', transition: 'width 0.5s' }} />
                     </div>
@@ -179,7 +232,6 @@ const Onboarding = () => {
             </div>
 
             <div style={{ flex: 1, width: '100%', maxWidth: '600px', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
-                
                 <div style={{ 
                     position: 'relative', marginBottom: '25px', width: '100%',
                     background: 'var(--color-bg-primary)', borderRadius: '50px',
@@ -214,6 +266,29 @@ const Onboarding = () => {
                     )}
                 </div>
             </div>
+
+            {/* Modal para importar playlist */}
+            {showSpotifyModal && (
+                <div className="modal-overlay">
+                    <div className="neumorphic-modal">
+                        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'15px'}}>
+                            <h3 style={{margin:0, color:'#1DB954'}}>Importar Playlist</h3>
+                            <button onClick={() => setShowSpotifyModal(false)} className="btn-mini-action" style={{boxShadow:'none'}}><FiX/></button>
+                        </div>
+                        <input 
+                            type="text" 
+                            placeholder="Pega el link de Spotify..." 
+                            value={spotifyUrl}
+                            onChange={(e) => setSpotifyUrl(e.target.value)}
+                            className="search-input-clean"
+                            style={{boxShadow:'inset 2px 2px 5px #bebebe', borderRadius:'10px', marginBottom:'15px'}}
+                        />
+                        <button onClick={handleSpotifyImport} className="btn-primary" style={{width:'100%'}} disabled={cargando}>
+                            {cargando ? "Analizando..." : "Comenzar Importación"}
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
