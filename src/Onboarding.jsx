@@ -151,7 +151,9 @@ const Onboarding = () => {
             setProgreso(res.data.total_semillas);
             
             if (res.data.total_semillas >= 10) {
-                finalizarOnboarding();
+                // Solución: Sincronizar contexto y navegar
+                setOnboardingComplete(true);
+                setTimeout(() => navigate('/feed'), 100);
             }
             setShowSpotifyModal(false);
             setSpotifyUrl("");

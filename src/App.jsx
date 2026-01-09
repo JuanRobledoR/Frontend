@@ -23,7 +23,8 @@ function AppContent() {
     // Carga perfil musical
     useEffect(() => {
         if (isAuthenticated && userId && onboardingComplete) {
-            fetch(`https://backend-nx0h.onrender.com${userId}`)
+            // Solución: Se agregó la ruta correcta /usuarios/perfil-vibe/
+            fetch(`https://backend-nx0h.onrender.com/usuarios/perfil-vibe/${userId}`)
                 .then(res => res.json())
                 .then(data => setUserVibe({ label: data.vibe, score: data.score }))
                 .catch(e => console.error(e));
